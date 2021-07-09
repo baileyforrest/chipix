@@ -1,22 +1,22 @@
-all: kernel.iso
+all: out/kernel.iso
 
-boot.o: boot.s
-	i686-elf-as boot.s -o boot.o
+out/boot.o: boot/boot.s
+	i686-elf-as boot/boot.s -o out/boot.o
 
-kernel.o: kernel.c
-	i686-elf-gcc -c kernel.c -o kernel.o -std=gnu99 -ffreestanding -O2 -Wall -Wextra
+out/kernel.o: src/kernel.c
+	i686-elf-gcc -c src/kernel.c -o out/kernel.o -std=gnu99 -ffreestanding -O2 -Wall -Wextra
 
-kernel.bin: boot.o kernel.o linker.ld
-	i686-elf-gcc -T linker.ld -o kernel.bin -ffreestanding -O2 -nostdlib boot.o kernel.o -lgcc
+out/kernel.bin: out/boot.o out/kernel.o linker.ld
+	i686-elf-gcc -T linker.ld -o out/kernel.bin -ffreestanding -O2 -nostdlib out/boot.o out/kernel.o -lgcc
 
-kernel.iso: kernel.bin grub.cfg
-	mkdir -p isodir/boot/grub
-	cp kernel.bin isodir/boot/kernel.bin
-	cp grub.cfg isodir/boot/grub/grub.cfg
-	grub-mkrescue -o kernel.iso isodir
+out/kernel.iso: out/kernel.bin boot/grub.cfg
+	mkdir -p out/isodir/boot/grub
+	cp out/kernel.bin out/isodir/boot/kernel.bin
+	cp boot/grub.cfg out/isodir/boot/grub/grub.cfg
+	grub-mkrescue -o out/kernel.iso out/isodir
 
 clean:
-	rm -rf *.o *.bin *.iso isodir
+	rm -rf out/*
 
-run: kernel.iso
+run: out/kernel.iso
 	bochs

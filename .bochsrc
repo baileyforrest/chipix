@@ -1,4 +1,4 @@
 boot: cdrom
 ata0: enabled=1, ioaddr1=0x1f0, ioaddr2=0x3f0, irq=14
-ata0-master: type=cdrom, path="kernel.iso", status=inserted
+ata0-master: type=cdrom, path="out/kernel.iso", status=inserted
 romimage: file="/usr/share/bochs/BIOS-bochs-legacy", address=0x00000000, options=none
