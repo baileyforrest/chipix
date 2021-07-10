@@ -1,3 +1,4 @@
+#include <stdio.h>
 #include <string.h>
 
 #include "tty.h"
@@ -16,7 +17,5 @@
 void kernel_main(void) {
   tty_init();
 
-  /* Newline support is left as an exercise. */
-  static const char kMsg[] = "Hello, kernel World!";
-  tty_write(kMsg, strlen(kMsg));
+  printf("Hello, kernel World!\n");
 }
