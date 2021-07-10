@@ -15,5 +15,6 @@ void kernel_main(void) {
   tty_init();
 
   /* Newline support is left as an exercise. */
-  tty_writestring("Hello, kernel World!\n");
+  static const char kMsg[] = "Hello, kernel World!\n";
+  tty_write(kMsg, sizeof(kMsg) - 1);
 }

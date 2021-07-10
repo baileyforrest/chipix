@@ -1,13 +1,20 @@
 PREFIX ?= i686-elf-
-
-CC := $(PREFIX)gcc
+ARCH ?= i386
 CFLAGS ?= -O0 -g
 
+CC := $(PREFIX)gcc
+AS := $(PREFIX)as
+AR := $(PREFIX)ar
+
 CFLAGS := $(CFLAGS) -std=c11 -ffreestanding -Wall -Wextra -Werror
+CPPFLAGS:=$(CPPFLAGS) -I.
 LIBS := -nostdlib -lgcc
 
-SRCS = $(shell find src -name '*.c')
-ASMS = $(shell find boot -name '*.s')
+ARCH_DIR := arch/$(ARCH)
+
+SRC_DIRS = $(ARCH_DIR) core
+SRCS = $(shell find $(DIRS) -name '*.c')
+ASMS = $(shell find $(DIRS) -name '*.s')
 OBJS = $(subst .c,.o,$(SRCS)) $(subst .s,.o,$(ASMS))
 
 .SUFFIXES: .o .c .s
@@ -23,8 +30,8 @@ LINK_LIST = \
 	$(OBJS) \
 	$(LIBS)
 
-out/kernel.bin: $(OBJS) linker.ld
-	$(CC) -T linker.ld -o $@ $(CFLAGS) $(LINK_LIST)
+out/kernel.bin: $(OBJS) $(ARCH_DIR)/linker.ld
+	$(CC) -T $(ARCH_DIR)/linker.ld -o $@ $(CFLAGS) $(LINK_LIST)
 
 out/kernel.iso: out/kernel.bin boot/grub.cfg
 	mkdir -p out/isodir/boot/grub
