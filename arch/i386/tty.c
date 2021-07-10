@@ -1,8 +1,10 @@
+#include "core/tty.h"
+
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
 
-#include "core/tty.h"
+#include "core/types.h"
 
 static const int VGA_WIDTH = 80;
 static const int VGA_HEIGHT = 25;
@@ -29,20 +31,20 @@ enum vga_color {
 
 static int tty_row;
 static int tty_col;
-static uint8_t tty_color;
-static uint16_t* tty_buffer;
+static u8 tty_color;
+static u16* tty_buffer;
 
-static uint8_t vga_entry_color(enum vga_color fg, enum vga_color bg) {
+static u8 vga_entry_color(enum vga_color fg, enum vga_color bg) {
   return fg | (bg << 4);
 }
 
-static uint16_t vga_entry(unsigned char uc, uint8_t color) {
-  return uc | ((uint16_t)color << 8);
+static u16 vga_entry(unsigned char uc, u8 color) {
+  return uc | ((u16)color << 8);
 }
 
-static void tty_setcolor(uint8_t color) { tty_color = color; }
+static void tty_setcolor(u8 color) { tty_color = color; }
 
-static void tty_putentryat(char c, uint8_t color, int x, int y) {
+static void tty_putentryat(char c, u8 color, int x, int y) {
   const int index = y * VGA_WIDTH + x;
   tty_buffer[index] = vga_entry(c, color);
 }
@@ -50,7 +52,7 @@ static void tty_putentryat(char c, uint8_t color, int x, int y) {
 void tty_init(void) {
   tty_row = 0;
   tty_col = 0;
-  tty_buffer = (uint16_t*)0xb8000;
+  tty_buffer = (u16*)0xb8000;
   tty_setcolor(vga_entry_color(VGA_COLOR_LIGHT_GREY, VGA_COLOR_BLACK));
 
   for (int y = 0; y < VGA_HEIGHT; ++y) {
