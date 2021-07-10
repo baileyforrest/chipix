@@ -1,3 +1,5 @@
+#include <string.h>
+
 #include "tty.h"
 
 /* Check if the compiler thinks you are targeting the wrong operating system. */
@@ -15,6 +17,6 @@ void kernel_main(void) {
   tty_init();
 
   /* Newline support is left as an exercise. */
-  static const char kMsg[] = "Hello, kernel World!\n";
-  tty_write(kMsg, sizeof(kMsg) - 1);
+  static const char kMsg[] = "Hello, kernel World!";
+  tty_write(kMsg, strlen(kMsg));
 }

@@ -7,7 +7,7 @@ AS := $(PREFIX)as
 AR := $(PREFIX)ar
 
 CFLAGS := $(CFLAGS) -std=c11 -ffreestanding -Wall -Wextra -Werror
-CPPFLAGS:=$(CPPFLAGS) -I.
+CPPFLAGS:=$(CPPFLAGS) -I. -Ilibc/include
 LIBS := -nostdlib -lgcc
 
 ARCH_DIR := arch/$(ARCH)
