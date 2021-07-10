@@ -17,5 +17,5 @@
 void kernel_main(void) {
   tty_init();
 
-  printf("Hello, kernel World!\n");
+  printf("Hello\nkernel\nWorld!\n");
 }

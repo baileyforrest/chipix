@@ -64,6 +64,12 @@ void tty_init(void) {
 }
 
 void tty_putchar(char c) {
+  if (c == '\n') {
+    tty_col = 0;
+    ++tty_row;
+    return;
+  }
+
   tty_putentryat(c, tty_color, tty_col, tty_row);
   if (++tty_col == VGA_WIDTH) {
     tty_col = 0;
@@ -74,7 +80,7 @@ void tty_putchar(char c) {
 }
 
 void tty_write(const char* data, size_t size) {
-  for (size_t i = 0; i < size; i++) {
-    tty_putchar(data[i]);
+  while (size--) {
+    tty_putchar(*(data++));
   }
 }
