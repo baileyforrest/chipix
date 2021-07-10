@@ -1,6 +1,7 @@
 #include <limits.h>
 #include <stdarg.h>
 #include <stdio.h>
+#include <stdlib.h>
 
 #ifdef LIBC_IS_LIBK
 #include "core/tty.h"
@@ -30,28 +31,43 @@ int printf(const char* restrict format, ...) {
     const char* format_start = format++;
 
     if (*format == '%') {
+      ++format;
       if (putchar('%') == EOF) {
         return -1;
       }
-      ++format;
       --remain;
       continue;
     }
 
-    if (*format == 'c') {
-      // char promotes to int.
-      if (putchar(va_arg(args, int)) == EOF) {
-        return -1;
+    if (*format == 'd') {
+      ++format;
+
+      int val = va_arg(args, int);
+      char buf[32];
+      int idx = 0;
+
+      while (val != 0) {
+        buf[idx++] = '0' + abs(val % 10);
+        val /= 10;
       }
 
-      ++format;
-      --remain;
+      while (idx > 0) {
+        if (remain-- == 0) {
+          // TODO: Set errno to EOVERFLOW.
+          return -1;
+        }
+
+        if (putchar(buf[--idx]) == EOF) {
+          return -1;
+        }
+      }
       continue;
     }
 
     if (*format == 's') {
-      const char* str = va_arg(args, const char*);
+      ++format;
 
+      const char* str = va_arg(args, const char*);
       while (*str) {
         if (remain-- == 0) {
           // TODO: Set errno to EOVERFLOW.
@@ -62,8 +78,18 @@ int printf(const char* restrict format, ...) {
           return -1;
         }
       }
+      continue;
+    }
 
-      format++;
+    if (*format == 'c') {
+      ++format;
+
+      // char promotes to int.
+      if (putchar(va_arg(args, int)) == EOF) {
+        return -1;
+      }
+
+      --remain;
       continue;
     }
 

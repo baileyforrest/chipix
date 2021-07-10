@@ -1,9 +1,12 @@
 #include "core/tty.h"
 
+#include <assert.h>
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
+#include <string.h>
 
+#include "core/macros.h"
 #include "core/types.h"
 
 static const int VGA_WIDTH = 80;
@@ -29,10 +32,10 @@ enum vga_color {
   VGA_COLOR_WHITE = 15,
 };
 
-static int tty_row;
-static int tty_col;
-static u8 tty_color;
-static u16* tty_buffer;
+static int g_tty_row;
+static int g_tty_col;
+static u8 g_tty_color;
+static u16* g_tty_buf;
 
 static u8 vga_entry_color(enum vga_color fg, enum vga_color bg) {
   return fg | (bg << 4);
@@ -42,39 +45,64 @@ static u16 vga_entry(unsigned char uc, u8 color) {
   return uc | ((u16)color << 8);
 }
 
-static void tty_setcolor(u8 color) { tty_color = color; }
+static void tty_setcolor(u8 color) { g_tty_color = color; }
 
 static void tty_putentryat(char c, u8 color, int x, int y) {
+  assert(x >= 0 && x < VGA_WIDTH);
+  assert(y >= 0 && y < VGA_HEIGHT);
+
   const int index = y * VGA_WIDTH + x;
-  tty_buffer[index] = vga_entry(c, color);
+  g_tty_buf[index] = vga_entry(c, color);
+}
+
+static void tty_scroll(int num_lines) {
+  assert(num_lines >= 1);
+  assert(num_lines <= g_tty_row);
+
+  const int num_total = VGA_WIDTH * VGA_HEIGHT;
+  const int num_scrolled = VGA_WIDTH * num_lines;
+  const int num_moved = num_total - num_scrolled;
+
+  // Scroll everything down.
+  memmove(g_tty_buf, g_tty_buf + num_scrolled,
+          num_moved * sizeof(g_tty_buf[0]));
+
+  // Clear the new area.
+  for (int i = 0; i < num_scrolled; ++i) {
+    g_tty_buf[num_moved + i] = vga_entry(' ', g_tty_color);
+  }
+
+  g_tty_row -= num_lines;
 }
 
 void tty_init(void) {
-  tty_row = 0;
-  tty_col = 0;
-  tty_buffer = (u16*)0xb8000;
+  g_tty_row = 0;
+  g_tty_col = 0;
+  g_tty_buf = (u16*)0xb8000;
   tty_setcolor(vga_entry_color(VGA_COLOR_LIGHT_GREY, VGA_COLOR_BLACK));
 
   for (int y = 0; y < VGA_HEIGHT; ++y) {
     for (int x = 0; x < VGA_WIDTH; ++x) {
       int index = y * VGA_WIDTH + x;
-      tty_buffer[index] = vga_entry(' ', tty_color);
+      g_tty_buf[index] = vga_entry(' ', g_tty_color);
     }
   }
 }
 
 void tty_putchar(char c) {
   if (c == '\n') {
-    tty_col = 0;
-    ++tty_row;
+    g_tty_col = 0;
+    if (++g_tty_row == VGA_HEIGHT) {
+      tty_scroll(1);
+    }
     return;
   }
 
-  tty_putentryat(c, tty_color, tty_col, tty_row);
-  if (++tty_col == VGA_WIDTH) {
-    tty_col = 0;
-    if (++tty_row == VGA_HEIGHT) {
-      tty_row = 0;
+  tty_putentryat(c, g_tty_color, g_tty_col, g_tty_row);
+  if (++g_tty_col == VGA_WIDTH) {
+    g_tty_col = 0;
+    if (++g_tty_row == VGA_HEIGHT) {
+      tty_scroll(1);
     }
   }
 }
