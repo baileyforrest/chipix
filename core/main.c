@@ -10,7 +10,10 @@
 void kernel_main(void) {
   tty_init();
 
+  int foo;
+  int bar;
+
   while (1) {
-    printf("Hello\nkernel\nWorld!\n");
+    printf("Hello\nkernel\nWorld! %p %p\n", &foo, &bar);
   }
 }

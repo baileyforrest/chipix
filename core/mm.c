@@ -6,6 +6,7 @@
 #include <stddef.h>
 
 #include "core/macros.h"
+#include "libc/macros.h"
 #include "libc/malloc.h"
 
 extern const uintptr_t _kernel_start;

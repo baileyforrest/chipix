@@ -6,8 +6,8 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "core/macros.h"
 #include "libc/dlist.h"
+#include "libc/macros.h"
 
 #define TAG_BITS 2
 _Static_assert((1 << TAG_BITS) <= _Alignof(uintptr_t));
