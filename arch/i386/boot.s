@@ -4,7 +4,7 @@
 .set ALIGN, 1 << 0
 
 // Provide memory map.
-.set MEMINFO, 1<<1
+.set MEMINFO, 1 << 1
 
 // This is the Multiboot 'flag' field.
 .set FLAGS, ALIGN | MEMINFO
@@ -50,9 +50,6 @@ _start:
 
 	// First address to map is address 0.
 	movl $0, %esi
-
-	// Map 1023 pages. The 1024th will be the VGA text buffer.
-	movl $1023, %ecx
 
 1:
 	// Only map the kernel.
