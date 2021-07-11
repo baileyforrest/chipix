@@ -277,11 +277,15 @@ void free(void* ptr) {
   }
 
   Header* header = free_node_header((Dlist*)ptr);
-  header_set_used(header, false);
-  header = try_coalesce_header(header);
+  assert(header_used(header));
 
   Footer* footer = header_get_footer(header);
+  assert(footer_used(footer));
+
+  header_set_used(header, false);
   footer_set_used(footer, false);
+
+  header = try_coalesce_header(header);
   footer = try_coalesce_footer(footer);
 
   // TODO(bcf): Return fully freed pages to kernel.
