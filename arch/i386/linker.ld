@@ -19,13 +19,15 @@ SECTIONS {
   .text ALIGN (4K) : AT (ADDR (.text) - 0xc0000000) {
     *(.text)
   }
-  .rodata ALIGN (4K) : AT (ADDR (.rodata) - 0xC0000000) {
+  .rodata ALIGN (4K) : AT (ADDR (.rodata) - 0xc0000000) {
     *(.rodata)
   }
-  .data ALIGN (4K) : AT (ADDR (.data) - 0xC0000000) {
+  .data ALIGN (4K) : AT (ADDR (.data) - 0xc0000000) {
     *(.data)
   }
-  .bss ALIGN (4K) : AT (ADDR (.bss) - 0xC0000000) {
+
+  /* TODO(bcf): Do we need to manually zero BSS? */
+  .bss ALIGN (4K) : AT (ADDR (.bss) - 0xc0000000) {
     *(COMMON)
     *(.bss)
     *(.bootstrap_stack)

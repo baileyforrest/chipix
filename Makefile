@@ -6,11 +6,11 @@ CC := $(PREFIX)gcc
 AS := $(PREFIX)as
 AR := $(PREFIX)ar
 
-CFLAGS := $(CFLAGS) -std=c11 -ffreestanding -Wall -Wextra -Werror
-CPPFLAGS:=$(CPPFLAGS) -I. -Ilibc/include -DLIBC_IS_LIBK
-LIBS := -nostdlib -lgcc
-
 ARCH_DIR := arch/$(ARCH)
+
+CFLAGS := $(CFLAGS) -std=c11 -ffreestanding -Wall -Wextra -Werror
+CPPFLAGS:=$(CPPFLAGS) -DLIBC_IS_LIBK -I. -Ilibc/include -I$(ARCH_DIR)/include
+LIBS := -nostdlib -lgcc
 
 SRC_DIRS = $(ARCH_DIR) core
 SRCS = $(shell find $(DIRS) -name '*.c')
