@@ -2,6 +2,7 @@
 
 #include <assert.h>
 #include <stdbool.h>
+#include <stddef.h>
 
 typedef struct Dlist {
   struct Dlist* prev;

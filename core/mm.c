@@ -10,9 +10,6 @@
 #include "libc/macros.h"
 #include "libc/malloc.h"
 
-extern const uintptr_t _kernel_start;
-extern const uintptr_t _kernel_end;
-
 static VaMgr g_kernel_va_mgr;
 
 static PhysAddrRange g_paddr_ranges[16];
@@ -29,7 +26,7 @@ typedef struct {
 _Alignas(sizeof(Page)) Page g_default_page;
 bool g_default_page_used = false;
 
-void* __malloc_alloc_pages(int count) {
+void* __malloc_alloc_pages(size_t count) {
   if (count <= 0) {
     return NULL;
   }
@@ -68,3 +65,15 @@ void mm_init(void) {
   g_num_paddr_ranges = ARRAY_SIZE(g_paddr_ranges);
   mm_arch_get_paddr_ranges(g_paddr_ranges, &g_num_paddr_ranges);
 }
+
+VirtAddr mm_alloc_page_va(size_t num_pages) {
+  return va_mgr_alloc(&g_kernel_va_mgr, num_pages);
+}
+
+void mm_free_page_va(VirtAddr addr, size_t num_pages) {
+  va_mgr_free(&g_kernel_va_mgr, addr, num_pages);
+}
+
+PhysAddr mm_alloc_page_pa(void) { return 0; }
+
+void mm_free_page_pa(PhysAddr addr) { (void)addr; }
