@@ -6,62 +6,17 @@
 #include <stddef.h>
 
 #include "core/macros.h"
+#include "core/va-mgr.h"
 #include "libc/macros.h"
 #include "libc/malloc.h"
 
 extern const uintptr_t _kernel_start;
 extern const uintptr_t _kernel_end;
 
+static VaMgr g_kernel_va_mgr;
+
 static PhysAddrRange g_paddr_ranges[16];
 static int g_num_paddr_ranges;
-
-#if 0
-// Bitmap for kernel VAs being available.
-// 0 = free
-// 1 = used
-static char g_kernel_va_map[(0 - KERNEL_HIGH_VA) / sizeof(char)]
-static int g_va_next_idx;
-
-// TODO(bcf): Make this dynamic based on memory actually available.
-static char g_pa_map[131072];
-static int g_pa_map_size;
-static int g_pa_next_idx;
-
-static uintptr_t alloc_page_addr(char* map, size_t map_size, int* next_idx) {
-  uintptr_t idx = *next_idx
-  do {
-    char val = map[idx];
-    if (val == ~0) {
-      if (++idx == map_size) {
-        idx = 0;
-      }
-      continue;
-    }
-
-    int bit = 0;
-    while (val & (1 << bit)) {
-      ++bit;
-    }
-
-    *next_idx = idx;
-
-    map[idx] &= (1 << bit);
-    uintptr_t page_idx = idx * sizeof(char) + bit;
-    return page_idx * PAGE_SIZE;
-  } while (idx != g_va_next_idx);
-
-  return 0;
-}
-
-static void free_page_addr(char* map, size_t map_size, uintptr_t addr) {
-  uintptr_t idx = addr / PAGE_SIZE;
-  int bit = idx % sizeof(char);
-  idx /= sizeof(char);
-
-  assert(idx < map_size);
-  map[idx] |= (1 << bit);
-}
-#endif
 
 // Page allocation requires requires heap allocation.
 // Heap allocation requires page allocation.
@@ -103,43 +58,13 @@ void __malloc_free_page(void* addr) {
 void mm_init(void) {
   __malloc_init();
 
-#if 0
-  // Make kernel VAs as used.
-  for (VirtAddr va = _kernel_start; va <= _kernel_end; va += PAGE_SIZE) {
-    set_kernel_va_used(va);
-  }
-#endif
+  va_mgr_ctor(&g_kernel_va_mgr);
+
+  uintptr_t heap_size = 0 - PAGE_SIZE - KERNEL_HEAP_VA;
+  int err =
+      va_mgr_add_vas(&g_kernel_va_mgr, KERNEL_HEAP_VA, heap_size / PAGE_SIZE);
+  assert(err == 0);
 
   g_num_paddr_ranges = ARRAY_SIZE(g_paddr_ranges);
   mm_arch_get_paddr_ranges(g_paddr_ranges, &g_num_paddr_ranges);
-
-#if 0
-  // TODO(bcf): Set based on number of real entries needed.
-  g_pa_map_size = ARRAY_SIZE(g_pa_map);
-#endif
 }
-
-#if 0
-VirtAddr mm_alloc_page_addr_va(int num_pages) {
-  assert(num_pages >= 0);
-  VirtAddr ret = alloc_page_addr(g_kernel_va_map, ARRAY_SIZE(g_kernel_va_map), &g_va_next_idx);
-  if (ret == 0) {
-    return 0;
-  }
-  return ret + KERNEL_HIGH_VA;
-}
-
-void mm_free_page_addr_va(VirtAddr addr) {
-  assert(addr >= KERNEL_HIGH_VA);
-
-  free_page_addr(g_kernel_va_map, ARRAY_SIZE(g_kernel_va_map), addr - KERNEL_HIGH_VA);
-}
-
-PhysAddr mm_alloc_page_addr_pa(void) {
-  return alloc_page_addr(g_pa_map, g_pa_map_size, &g_pa_next_idx);
-}
-
-void mm_free_page_addr_pa(PhysAddr addr) {
-  free_page_addr(g_pa_map, g_pa_map_size, addr);
-}
-#endif
