@@ -50,7 +50,21 @@ void __malloc_free_page(void* addr) {
   PANIC("%s: Unimplemented", __func__);
 }
 
-void mm_init(void) {
+static void mm_register_pa(uintptr_t begin, uintptr_t end) {
+  if (begin == end) {
+    return;
+  }
+
+  printf("Registering PAs: [%x, %x)\n", begin, end);
+  int err = addr_mgr_add_vas(&g_pa_mgr, begin, (end - begin) / PAGE_SIZE);
+  PANIC_IF(err != 0, "Registering physical addresses failed");
+}
+
+void mm_init(multiboot_info_t* mbd) {
+  if (!((mbd->flags >> 6) & 1)) {
+    PANIC("invalid memory map given by GRUB bootloader");
+  }
+
   __malloc_init();
 
   addr_mgr_ctor(&g_kernel_va_mgr);
@@ -59,17 +73,34 @@ void mm_init(void) {
   int err = addr_mgr_add_vas(&g_kernel_va_mgr, KERNEL_HEAP_VA, num_heap_pages);
   PANIC_IF(err != 0, "Registering virtual addresses failed");
 
-  PhysAddrRange paddr_ranges[32];
-  int num_paddr_ranges = ARRAY_SIZE(paddr_ranges);
-  mm_arch_get_paddr_ranges(paddr_ranges, &num_paddr_ranges);
+  const uintptr_t kernel_begin = mm_arch_kernel_start();
+  const uintptr_t kernel_end = mm_arch_kernel_end();
+  printf("kernel_pa: [%x, %x)\n", kernel_begin, kernel_end);
 
-  for (int i = 0; i < num_paddr_ranges; ++i) {
-    PhysAddrRange* range = &paddr_ranges[i];
-    size_t num_pages = (range->end - range->begin) / PAGE_SIZE;
+  for (int i = 0; i < mbd->mmap_length; i += sizeof(multiboot_memory_map_t)) {
+    multiboot_memory_map_t* mmmt = (void*)(mbd->mmap_addr + i);
+    if (mmmt->type != MULTIBOOT_MEMORY_AVAILABLE) {
+      continue;
+    }
 
-    err = addr_mgr_add_vas(&g_pa_mgr, range->begin, num_pages);
-    PANIC_IF(err != 0, "Registering physical addresses failed");
+    uintptr_t begin = mmmt->addr;
+    uintptr_t end = begin + mmmt->len;
+
+    if (kernel_begin >= begin && kernel_end <= end) {
+      mm_register_pa(begin, kernel_begin);
+
+      begin = kernel_end;
+      end = MAX(size_t, begin, end);
+    }
+
+    if (kernel_end >= begin && kernel_end <= end) {
+      begin = kernel_end;
+    }
+
+    mm_register_pa(begin, end);
   }
+
+  // TODO(bcf): Unmap identify page table mappings.
 }
 
 VirtAddr mm_alloc_page_va(size_t num_pages) {

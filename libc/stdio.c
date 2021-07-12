@@ -129,7 +129,7 @@ int printf(const char* restrict format, ...) {
     if (*state.format == 'x') {
       ++state.format;
 
-      if (printf_hex(&state, va_arg(args, unsigned), 0) < 0) {
+      if (printf_hex(&state, va_arg(args, unsigned), 1) < 0) {
         return -1;
       }
       continue;

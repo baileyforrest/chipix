@@ -1,5 +1,7 @@
 #pragma once
 
+#include <stdlib.h>
+
 #define PANIC(...)       \
   do {                   \
     printf(__VA_ARGS__); \

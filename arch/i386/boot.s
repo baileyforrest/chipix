@@ -52,9 +52,6 @@ _start:
 	movl $0, %esi
 
 1:
-	// Only map the kernel.
-	cmpl $_kernel_start, %esi
-	jl 2f
 	cmpl $(_kernel_end - 0xc0000000), %esi
 	jge 3f
 
@@ -64,7 +61,6 @@ _start:
 	orl $0x003, %edx
 	movl %edx, (%edi)
 
-2:
 	// Size of page is 4096 bytes.
 	addl $4096, %esi
 	// Size of entries in boot_page_table1 is 4 bytes.
@@ -103,19 +99,12 @@ _start:
 
 .section .text
 4:
-	// At this point, paging is fully set up and enabled.
-
-	// Unmap the identity mapping as it is now unnecessary. 
-	movl $0, boot_page_directory + 0
-
-	// Reload crc3 to force a TLB flush so the changes to take effect.
-	movl %cr3, %ecx
-	movl %ecx, %cr3
-
 	// Set up the stack.
 	mov $stack_top, %esp
 
 	// Enter the high-level kernel.
+	push %eax  // magic
+	push %ebx  // multiboot_info_t*
 	call kernel_main
 
 	// Infinite loop if the system has nothing more to do.

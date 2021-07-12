@@ -8,7 +8,9 @@ AR := $(PREFIX)ar
 
 ARCH_DIR := arch/$(ARCH)
 
-CFLAGS := $(CFLAGS) -std=c11 -ffreestanding -Wall -Wextra -Werror
+CFLAGS := $(CFLAGS) -std=c11 -ffreestanding \
+	-Wall -Wextra -Werror -Wno-array-bounds -Wno-sign-compare
+
 CPPFLAGS:=$(CPPFLAGS) -DLIBC_IS_LIBK -I. -Ilibc/include -I$(ARCH_DIR)/include
 LIBS := -nostdlib -lgcc
 

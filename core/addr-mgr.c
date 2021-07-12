@@ -25,7 +25,7 @@ static int TreeVaCmp(Tree* lt, Tree* rt) {
     return -1;
   }
 
-  if (r->end >= l->begin) {
+  if (r->end <= l->begin) {
     return 1;
   }
 
@@ -50,11 +50,11 @@ static int TreeSizeCmp(Tree* lt, Tree* rt) {
     return 1;
   }
 
-  if (l->begin < r->begin) {
+  if (l->end <= r->begin) {
     return -1;
   }
 
-  if (l->begin > r->begin) {
+  if (r->end <= l->begin) {
     return 1;
   }
 
@@ -104,6 +104,10 @@ static void addr_mgr_erase_region(AddrMgr* vam, Region* region) {
 }
 
 int addr_mgr_add_vas(AddrMgr* vam, uintptr_t va, size_t num_pages) {
+  if (num_pages == 0) {
+    return 0;
+  }
+
   uintptr_t begin = va;
   uintptr_t end = begin + num_pages * PAGE_SIZE;
   if (end < begin) {
@@ -211,6 +215,10 @@ static Region* find_adjacent_right(Tree* t, uintptr_t end) {
 }
 
 void addr_mgr_free(AddrMgr* vam, uintptr_t addr, size_t num_pages) {
+  if (num_pages == 0) {
+    return;
+  }
+
   size_t size = num_pages * PAGE_SIZE;
   Region key = {
       .begin = addr,
