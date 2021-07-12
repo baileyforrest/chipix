@@ -11,9 +11,7 @@
 #include "libc/malloc.h"
 
 static AddrMgr g_kernel_va_mgr;
-
-static PhysAddrRange g_paddr_ranges[16];
-static int g_num_paddr_ranges;
+static AddrMgr g_pa_mgr;
 
 // Page allocation requires requires heap allocation.
 // Heap allocation requires page allocation.
@@ -57,13 +55,21 @@ void mm_init(void) {
 
   addr_mgr_ctor(&g_kernel_va_mgr);
 
-  uintptr_t heap_size = 0 - PAGE_SIZE - KERNEL_HEAP_VA;
-  int err =
-      addr_mgr_add_vas(&g_kernel_va_mgr, KERNEL_HEAP_VA, heap_size / PAGE_SIZE);
-  assert(err == 0);
+  uintptr_t num_heap_pages = (0 - PAGE_SIZE - KERNEL_HEAP_VA) / PAGE_SIZE;
+  int err = addr_mgr_add_vas(&g_kernel_va_mgr, KERNEL_HEAP_VA, num_heap_pages);
+  PANIC_IF(err != 0, "Registering virtual addresses failed");
 
-  g_num_paddr_ranges = ARRAY_SIZE(g_paddr_ranges);
-  mm_arch_get_paddr_ranges(g_paddr_ranges, &g_num_paddr_ranges);
+  PhysAddrRange paddr_ranges[32];
+  int num_paddr_ranges = ARRAY_SIZE(paddr_ranges);
+  mm_arch_get_paddr_ranges(paddr_ranges, &num_paddr_ranges);
+
+  for (int i = 0; i < num_paddr_ranges; ++i) {
+    PhysAddrRange* range = &paddr_ranges[i];
+    size_t num_pages = (range->end - range->begin) / PAGE_SIZE;
+
+    err = addr_mgr_add_vas(&g_pa_mgr, range->begin, num_pages);
+    PANIC_IF(err != 0, "Registering physical addresses failed");
+  }
 }
 
 VirtAddr mm_alloc_page_va(size_t num_pages) {
@@ -74,6 +80,6 @@ void mm_free_page_va(VirtAddr addr, size_t num_pages) {
   addr_mgr_free(&g_kernel_va_mgr, addr, num_pages);
 }
 
-PhysAddr mm_alloc_page_pa(void) { return 0; }
+PhysAddr mm_alloc_page_pa(void) { return addr_mgr_alloc(&g_pa_mgr, 1); }
 
-void mm_free_page_pa(PhysAddr addr) { (void)addr; }
+void mm_free_page_pa(PhysAddr addr) { addr_mgr_free(&g_pa_mgr, addr, 1); }
