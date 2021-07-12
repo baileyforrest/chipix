@@ -1,4 +1,4 @@
-#include "core/va-mgr.h"
+#include "core/addr-mgr.h"
 
 #include <arch.h>
 
@@ -8,18 +8,18 @@ typedef struct {
   Tree addr_node;
   Tree size_node;
 
-  VirtAddr begin;
-  VirtAddr end;
-} VaRegion;
+  uintptr_t begin;
+  uintptr_t end;
+} Region;
 
-static size_t region_size(const VaRegion* region) {
+static size_t region_size(const Region* region) {
   assert(region->end >= region->begin);
   return region->end - region->begin;
 }
 
 static int TreeVaCmp(Tree* lt, Tree* rt) {
-  VaRegion* l = CONTAINER_OF(lt, VaRegion, addr_node);
-  VaRegion* r = CONTAINER_OF(rt, VaRegion, addr_node);
+  Region* l = CONTAINER_OF(lt, Region, addr_node);
+  Region* r = CONTAINER_OF(rt, Region, addr_node);
 
   if (l->end <= r->begin) {
     return -1;
@@ -33,8 +33,8 @@ static int TreeVaCmp(Tree* lt, Tree* rt) {
 }
 
 static int TreeSizeCmp(Tree* lt, Tree* rt) {
-  VaRegion* l = CONTAINER_OF(lt, VaRegion, size_node);
-  VaRegion* r = CONTAINER_OF(rt, VaRegion, size_node);
+  Region* l = CONTAINER_OF(lt, Region, size_node);
+  Region* r = CONTAINER_OF(rt, Region, size_node);
 
   uintptr_t l_size = region_size(l);
   uintptr_t r_size = region_size(r);
@@ -61,73 +61,74 @@ static int TreeSizeCmp(Tree* lt, Tree* rt) {
   return 0;
 }
 
-void va_mgr_ctor(VaMgr* vam) {
-  vam->va_by_size = NULL;
-  vam->va_by_addr = NULL;
+void addr_mgr_ctor(AddrMgr* vam) {
+  vam->free_by_size = NULL;
+  vam->free_by_addr = NULL;
 }
 
-static void va_mgr_free_tree(Tree* t) {
+static void addr_mgr_free_tree(Tree* t) {
   if (t == NULL) {
     return;
   }
-  va_mgr_free_tree(t->left);
-  va_mgr_free_tree(t->right);
+  addr_mgr_free_tree(t->left);
+  addr_mgr_free_tree(t->right);
 
-  VaRegion* region = CONTAINER_OF(t, VaRegion, addr_node);
+  Region* region = CONTAINER_OF(t, Region, addr_node);
   free(region);
 }
 
-void va_mgr_dtor(VaMgr* vam) {
+void addr_mgr_dtor(AddrMgr* vam) {
   // Both trees point to the same nodes.
-  va_mgr_free_tree(vam->va_by_addr);
+  addr_mgr_free_tree(vam->free_by_addr);
 
-  vam->va_by_size = NULL;
-  vam->va_by_addr = NULL;
+  vam->free_by_size = NULL;
+  vam->free_by_addr = NULL;
 }
 
-static void va_mgr_insert_region(VaMgr* vam, VaRegion* region) {
+static void addr_mgr_insert_region(AddrMgr* vam, Region* region) {
   Tree* existing =
-      tree_insert(&vam->va_by_addr, &region->addr_node, &TreeVaCmp);
+      tree_insert(&vam->free_by_addr, &region->addr_node, &TreeVaCmp);
   assert(existing == NULL);
 
-  existing = tree_insert(&vam->va_by_size, &region->size_node, TreeSizeCmp);
+  existing = tree_insert(&vam->free_by_size, &region->size_node, TreeSizeCmp);
   assert(existing == NULL);
 }
 
-static void va_mgr_erase_region(VaMgr* vam, VaRegion* region) {
-  Tree* deleted = tree_erase(&vam->va_by_size, &region->size_node, TreeSizeCmp);
+static void addr_mgr_erase_region(AddrMgr* vam, Region* region) {
+  Tree* deleted =
+      tree_erase(&vam->free_by_size, &region->size_node, TreeSizeCmp);
   assert(deleted == &region->size_node);
 
-  deleted = tree_erase(&vam->va_by_addr, &region->addr_node, TreeVaCmp);
+  deleted = tree_erase(&vam->free_by_addr, &region->addr_node, TreeVaCmp);
   assert(deleted == &region->addr_node);
 }
 
-int va_mgr_add_vas(VaMgr* vam, VirtAddr va, size_t num_pages) {
-  VirtAddr begin = va;
-  VirtAddr end = begin + num_pages * PAGE_SIZE;
+int addr_mgr_add_vas(AddrMgr* vam, uintptr_t va, size_t num_pages) {
+  uintptr_t begin = va;
+  uintptr_t end = begin + num_pages * PAGE_SIZE;
   if (end < begin) {
     LOG("%s: VA overflow: va: %p, num_pages: %d", __func__, (void*)va,
         (int)num_pages);
     return -1;
   }
 
-  VaRegion* region = malloc(sizeof(*region));
+  Region* region = malloc(sizeof(*region));
   if (region == NULL) {
     return -1;
   }
   region->begin = begin;
   region->end = end;
 
-  va_mgr_insert_region(vam, region);
+  addr_mgr_insert_region(vam, region);
   return 0;
 }
 
-static VaRegion* va_mgr_alloc_find_region(const Tree* t, size_t size) {
+static Region* addr_mgr_alloc_find_region(const Tree* t, size_t size) {
   if (t == NULL) {
     return NULL;
   }
 
-  VaRegion* r = CONTAINER_OF(t, VaRegion, size_node);
+  Region* r = CONTAINER_OF(t, Region, size_node);
   size_t r_size = region_size(r);
 
   // Exact size.
@@ -137,11 +138,11 @@ static VaRegion* va_mgr_alloc_find_region(const Tree* t, size_t size) {
 
   // Too small, check larger regions.
   if (r_size < size) {
-    return va_mgr_alloc_find_region(t->right, size);
+    return addr_mgr_alloc_find_region(t->right, size);
   }
 
   // Bigger than needed, so try to find a smaller one.
-  VaRegion* l_region = va_mgr_alloc_find_region(t->left, size);
+  Region* l_region = addr_mgr_alloc_find_region(t->left, size);
   if (l_region != NULL) {
     return l_region;
   }
@@ -149,16 +150,16 @@ static VaRegion* va_mgr_alloc_find_region(const Tree* t, size_t size) {
   return r;
 }
 
-VirtAddr va_mgr_alloc(VaMgr* vam, size_t num_pages) {
+uintptr_t addr_mgr_alloc(AddrMgr* vam, size_t num_pages) {
   size_t size = num_pages * PAGE_SIZE;
 
-  VaRegion* region = va_mgr_alloc_find_region(vam->va_by_size, size);
+  Region* region = addr_mgr_alloc_find_region(vam->free_by_size, size);
   if (region == NULL) {
     return 0;
   }
 
-  const VirtAddr ret = region->begin;
-  va_mgr_erase_region(vam, region);
+  const uintptr_t ret = region->begin;
+  addr_mgr_erase_region(vam, region);
 
   // Update the region.
   region->begin += size;
@@ -170,17 +171,17 @@ VirtAddr va_mgr_alloc(VaMgr* vam, size_t num_pages) {
   }
 
   // Store second half in free lists.
-  va_mgr_insert_region(vam, region);
+  addr_mgr_insert_region(vam, region);
 
   return ret;
 }
 
-static VaRegion* find_adjacent_left(Tree* t, VirtAddr begin) {
+static Region* find_adjacent_left(Tree* t, uintptr_t begin) {
   if (t == NULL) {
     return NULL;
   }
 
-  VaRegion* region = CONTAINER_OF(t, VaRegion, addr_node);
+  Region* region = CONTAINER_OF(t, Region, addr_node);
   if (begin < region->end) {
     return find_adjacent_left(t->left, begin);
   }
@@ -192,12 +193,12 @@ static VaRegion* find_adjacent_left(Tree* t, VirtAddr begin) {
   return region;
 }
 
-static VaRegion* find_adjacent_right(Tree* t, VirtAddr end) {
+static Region* find_adjacent_right(Tree* t, uintptr_t end) {
   if (t == NULL) {
     return NULL;
   }
 
-  VaRegion* region = CONTAINER_OF(t, VaRegion, addr_node);
+  Region* region = CONTAINER_OF(t, Region, addr_node);
   if (end < region->begin) {
     return find_adjacent_right(t->left, end);
   }
@@ -209,34 +210,34 @@ static VaRegion* find_adjacent_right(Tree* t, VirtAddr end) {
   return region;
 }
 
-void va_mgr_free(VaMgr* vam, VirtAddr addr, size_t num_pages) {
+void addr_mgr_free(AddrMgr* vam, uintptr_t addr, size_t num_pages) {
   size_t size = num_pages * PAGE_SIZE;
-  VaRegion key = {
+  Region key = {
       .begin = addr,
       .end = addr + size,
   };
-  if (tree_find(vam->va_by_addr, &key.addr_node, TreeVaCmp) != NULL) {
+  if (tree_find(vam->free_by_addr, &key.addr_node, TreeVaCmp) != NULL) {
     PANIC("%s: Double free of VA: [%p, %p)", __func__, (void*)key.begin,
           (void*)key.end);
   }
 
-  VirtAddr new_begin = key.begin;
-  VirtAddr new_end = key.end;
-  VaRegion* new_region = NULL;
+  uintptr_t new_begin = key.begin;
+  uintptr_t new_end = key.end;
+  Region* new_region = NULL;
 
   // See if we can coalesce adjacent regions.
-  VaRegion* adjacent_left = find_adjacent_left(vam->va_by_addr, key.begin);
+  Region* adjacent_left = find_adjacent_left(vam->free_by_addr, key.begin);
   if (adjacent_left) {
     new_begin = adjacent_left->begin;
-    va_mgr_erase_region(vam, adjacent_left);
+    addr_mgr_erase_region(vam, adjacent_left);
 
     new_region = adjacent_left;
   }
 
-  VaRegion* adjacent_right = find_adjacent_right(vam->va_by_addr, key.end);
+  Region* adjacent_right = find_adjacent_right(vam->free_by_addr, key.end);
   if (adjacent_right) {
     new_end = adjacent_right->end;
-    va_mgr_erase_region(vam, adjacent_right);
+    addr_mgr_erase_region(vam, adjacent_right);
 
     if (new_region != NULL) {
       free(adjacent_right);
@@ -256,5 +257,5 @@ void va_mgr_free(VaMgr* vam, VirtAddr addr, size_t num_pages) {
 
   new_region->begin = new_begin;
   new_region->end = new_end;
-  va_mgr_insert_region(vam, new_region);
+  addr_mgr_insert_region(vam, new_region);
 }

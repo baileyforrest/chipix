@@ -5,12 +5,12 @@
 #include <stdbool.h>
 #include <stddef.h>
 
+#include "core/addr-mgr.h"
 #include "core/macros.h"
-#include "core/va-mgr.h"
 #include "libc/macros.h"
 #include "libc/malloc.h"
 
-static VaMgr g_kernel_va_mgr;
+static AddrMgr g_kernel_va_mgr;
 
 static PhysAddrRange g_paddr_ranges[16];
 static int g_num_paddr_ranges;
@@ -55,11 +55,11 @@ void __malloc_free_page(void* addr) {
 void mm_init(void) {
   __malloc_init();
 
-  va_mgr_ctor(&g_kernel_va_mgr);
+  addr_mgr_ctor(&g_kernel_va_mgr);
 
   uintptr_t heap_size = 0 - PAGE_SIZE - KERNEL_HEAP_VA;
   int err =
-      va_mgr_add_vas(&g_kernel_va_mgr, KERNEL_HEAP_VA, heap_size / PAGE_SIZE);
+      addr_mgr_add_vas(&g_kernel_va_mgr, KERNEL_HEAP_VA, heap_size / PAGE_SIZE);
   assert(err == 0);
 
   g_num_paddr_ranges = ARRAY_SIZE(g_paddr_ranges);
@@ -67,11 +67,11 @@ void mm_init(void) {
 }
 
 VirtAddr mm_alloc_page_va(size_t num_pages) {
-  return va_mgr_alloc(&g_kernel_va_mgr, num_pages);
+  return addr_mgr_alloc(&g_kernel_va_mgr, num_pages);
 }
 
 void mm_free_page_va(VirtAddr addr, size_t num_pages) {
-  va_mgr_free(&g_kernel_va_mgr, addr, num_pages);
+  addr_mgr_free(&g_kernel_va_mgr, addr, num_pages);
 }
 
 PhysAddr mm_alloc_page_pa(void) { return 0; }
