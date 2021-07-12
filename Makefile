@@ -41,12 +41,18 @@ out/kernel.iso: out/kernel.bin boot/grub.cfg
 	cp boot/grub.cfg out/isodir/boot/grub/grub.cfg
 	grub-mkrescue -o $@ out/isodir
 
+.PHONY: clean
 clean:
 	rm -rf out/*
 	rm -f $(OBJS)
 	rm -f $(OBJS:.o=.d)
 
-run: out/kernel.iso
+.PHONY: bochs
+bochs: out/kernel.iso
 	bochs
+
+.PHONY: qemu
+qemu: out/kernel.iso
+	qemu-system-i386 -cdrom out/kernel.iso
 
 -include $(OBJS:.o=.d)
