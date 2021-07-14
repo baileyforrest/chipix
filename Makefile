@@ -3,26 +3,32 @@ ARCH ?= i386
 CFLAGS ?= -O0 -g
 
 CC := $(PREFIX)gcc
+CXX := $(PREFIX)g++
 AS := $(PREFIX)as
 AR := $(PREFIX)ar
 
 ARCH_DIR := arch/$(ARCH)
 
-CFLAGS := $(CFLAGS) -std=c11 -ffreestanding \
+CFLAGS := $(CFLAGS) -ffreestanding \
 	-Wall -Wextra -Werror -Wno-array-bounds -Wno-sign-compare
 
 CPPFLAGS:=$(CPPFLAGS) -DLIBC_IS_LIBK -I. -Ilibc/include -I$(ARCH_DIR)/include
 LIBS := -nostdlib -lgcc
 
-SRC_DIRS = $(ARCH_DIR) core
-SRCS = $(shell find $(DIRS) -name '*.c')
-ASMS = $(shell find $(DIRS) -name '*.s')
-OBJS = $(subst .c,.o,$(SRCS)) $(subst .s,.o,$(ASMS))
+SRC_DIRS = $(ARCH_DIR) core cxxrt libc
+OBJS = \
+	$(patsubst %.s,%.o,$(shell find $(SRC_DIRS) -name '*.s')) \
+	$(patsubst %.c,%.o,$(shell find $(SRC_DIRS) -name '*.c')) \
+	$(patsubst %.cc,%.o,$(shell find $(SRC_DIRS) -name '*.cc')) \
 
-.SUFFIXES: .o .c .s
+.SUFFIXES: .o .c .cc .s
 .c.o:
-	$(CC) -MD -c $< -o $@ $(CFLAGS) $(CPPFLAGS)
- 
+	$(CC) -MD -c $< -o $@ -std=c11 $(CFLAGS) $(CPPFLAGS)
+
+.cc.o:
+	$(CXX) -MD -c $< -o $@ -std=c++17 $(CFLAGS) $(CPPFLAGS) \
+		-fno-exceptions -fno-rtti
+
 .s.o:
 	$(CC) -MD -c $< -o $@ $(CFLAGS) $(CPPFLAGS)
 
@@ -33,7 +39,7 @@ LINK_LIST = \
 	$(LIBS)
 
 out/kernel.bin: $(OBJS) $(ARCH_DIR)/linker.ld
-	$(CC) -T $(ARCH_DIR)/linker.ld -o $@ $(CFLAGS) $(LINK_LIST)
+	$(CXX) -T $(ARCH_DIR)/linker.ld -o $@ $(CFLAGS) $(LINK_LIST)
 
 out/kernel.iso: out/kernel.bin boot/grub.cfg
 	mkdir -p out/isodir/boot/grub

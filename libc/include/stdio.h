@@ -8,7 +8,7 @@ extern "C" {
 #define EOF (-1)
 
 // TODO(bcf): Implement for real.
-#define fprintf(stream, format, ...) printf(format, __VA_ARGS__)
+#define fprintf(stream, ...) printf(__VA_ARGS__)
 
 int printf(const char *format, ...);
 int putchar(int c);
