@@ -116,7 +116,7 @@ int addr_mgr_add_vas(AddrMgr* vam, uintptr_t va, size_t num_pages) {
     return -1;
   }
 
-  Region* region = malloc(sizeof(*region));
+  Region* region = new Region;
   if (region == NULL) {
     return -1;
   }
@@ -255,7 +255,7 @@ void addr_mgr_free(AddrMgr* vam, uintptr_t addr, size_t num_pages) {
   }
 
   if (new_region == NULL) {
-    new_region = malloc(sizeof(*new_region));
+    new_region = new Region;
     if (new_region == NULL) {
       // TODO(bcf): Handle this robustly.
       LOG("%s: Failed to allocate new free region");

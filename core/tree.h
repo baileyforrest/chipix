@@ -3,6 +3,8 @@
 #include <assert.h>
 #include <stddef.h>
 
+#include <algorithm>
+
 #include "libc/macros.h"
 
 typedef struct Tree {
@@ -14,7 +16,7 @@ typedef struct Tree {
 static inline int tree_height(Tree* t) { return t == NULL ? 0 : t->height; }
 
 static inline void tree_calc_height(Tree* t) {
-  t->height = MAX(int, tree_height(t->left), tree_height(t->right)) + 1;
+  t->height = std::max(tree_height(t->left), tree_height(t->right)) + 1;
 }
 
 static inline int tree_balance_factor(Tree* t) {

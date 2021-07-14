@@ -4,14 +4,10 @@
 
 #include <new>
 
-extern "C" {
-
 #include "core/macros.h"
 #include "core/mm.h"
 #include "core/multiboot.h"
 #include "core/tty.h"
-
-}
 
 #ifdef __linux__
 #error "You are not using a cross-compiler"

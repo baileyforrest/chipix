@@ -5,8 +5,8 @@
 
 #include "core/macros.h"
 
-extern char _kernel_start;
-extern char _kernel_end;
+extern "C" char _kernel_start;
+extern "C" char _kernel_end;
 
 uintptr_t mm_arch_kernel_start(void) { return (uintptr_t)&_kernel_start; }
 

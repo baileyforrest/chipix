@@ -5,6 +5,8 @@
 #include <stdbool.h>
 #include <stddef.h>
 
+#include <algorithm>
+
 #include "core/addr-mgr.h"
 #include "core/macros.h"
 #include "libc/macros.h"
@@ -21,8 +23,9 @@ typedef struct {
   char data[PAGE_SIZE];
 } Page;
 
-_Alignas(sizeof(Page)) Page g_default_page;
+alignas(sizeof(Page)) Page g_default_page;
 bool g_default_page_used = false;
+
 
 void* __malloc_alloc_pages(size_t count) {
   if (count <= 0) {
@@ -78,7 +81,7 @@ void mm_init(multiboot_info_t* mbd) {
   printf("kernel_pa: [%x, %x)\n", kernel_begin, kernel_end);
 
   for (int i = 0; i < mbd->mmap_length; i += sizeof(multiboot_memory_map_t)) {
-    multiboot_memory_map_t* mmmt = (void*)(mbd->mmap_addr + i);
+    auto* mmmt = reinterpret_cast<multiboot_memory_map_t*>(mbd->mmap_addr + i);
     if (mmmt->type != MULTIBOOT_MEMORY_AVAILABLE) {
       continue;
     }
@@ -90,7 +93,7 @@ void mm_init(multiboot_info_t* mbd) {
       mm_register_pa(begin, kernel_begin);
 
       begin = kernel_end;
-      end = MAX(size_t, begin, end);
+      end = std::max(begin, end);
     }
 
     if (kernel_end >= begin && kernel_end <= end) {

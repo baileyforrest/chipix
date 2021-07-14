@@ -10,7 +10,8 @@ AR := $(PREFIX)ar
 ARCH_DIR := arch/$(ARCH)
 
 CFLAGS := $(CFLAGS) -ffreestanding \
-	-Wall -Wextra -Werror -Wno-array-bounds -Wno-sign-compare
+	-Wall -Wextra -Werror \
+	-Wno-array-bounds -Wno-sign-compare -Wno-missing-field-initializers
 
 CPPFLAGS:=$(CPPFLAGS) -DLIBC_IS_LIBK \
 	-I$(ARCH_DIR)/include \
