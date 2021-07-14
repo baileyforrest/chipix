@@ -78,7 +78,7 @@ static void tty_scroll(int num_lines) {
 void tty_init(void) {
   g_tty_row = 0;
   g_tty_col = 0;
-  g_tty_buf = (u16*)0xc03ff000;
+  g_tty_buf = reinterpret_cast<u16*>(0xc03ff000);
   tty_setcolor(vga_entry_color(VGA_COLOR_LIGHT_GREY, VGA_COLOR_BLACK));
 
   for (int y = 0; y < VGA_HEIGHT; ++y) {

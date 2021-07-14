@@ -3,7 +3,7 @@
 SCRIPT_DIR=$(dirname "$0")
 cd $SCRIPT_DIR/..
 
-DIRS="core"
+DIRS="core arch"
 FILES=$(find $DIRS -name "*.h" -o -name "*.cc")
 
 ./third_party/styleguide/cpplint/cpplint.py --verbose=0 \
