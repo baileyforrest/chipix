@@ -75,4 +75,8 @@ bochs: out/kernel.iso
 qemu: out/kernel.iso
 	qemu-system-i386 -cdrom out/kernel.iso
 
+.PHONY: cloc
+cloc:
+	cloc --exclude-dir=third_party --exclude-ext=d .
+
 -include $(OBJS:.o=.d)
