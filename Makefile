@@ -11,7 +11,7 @@ ARCH_DIR := arch/$(ARCH)
 
 CFLAGS := $(CFLAGS) -ffreestanding \
 	-Wall -Wextra -Werror \
-	-Wno-sign-compare -Wno-missing-field-initializers
+	-Wno-sign-compare -Wno-missing-field-initializers -Wno-unused-parameter
 
 CPPFLAGS:=$(CPPFLAGS) -DLIBC_IS_LIBK \
 	-I$(ARCH_DIR)/include \

@@ -1,5 +1,7 @@
 #pragma once
 
+// TODO(bcf): Convert to C++.
+
 #include <assert.h>
 #include <stddef.h>
 

@@ -1,19 +1,30 @@
 #pragma once
 
+#include <assert.h>
 #include <stddef.h>
 
 #include "core/mm.h"
 #include "core/tree.h"
 
-typedef struct {
-  Tree* free_by_size;
-  Tree* free_by_addr;
-} AddrMgr;
+class AddrMgr {
+ public:
+  struct Region;
 
-void addr_mgr_ctor(AddrMgr* vam);
-void addr_mgr_dtor(AddrMgr* vam);
+  AddrMgr() = default;
+  ~AddrMgr();
 
-int addr_mgr_add_vas(AddrMgr* vam, uintptr_t va, size_t num_pages);
+  AddrMgr(const AddrMgr&) = delete;
+  AddrMgr operator=(const AddrMgr&) = delete;
 
-uintptr_t addr_mgr_alloc(AddrMgr* vam, size_t num_pages);
-void addr_mgr_free(AddrMgr* vam, uintptr_t addr, size_t num_pages);
+  // TODO(bcf): Introduce status type.
+  int AddVas(uintptr_t va, size_t num_pages);
+  uintptr_t Alloc(size_t num_pages);
+  void Free(uintptr_t addr, size_t num_pages);
+
+ private:
+  void InsertRegion(Region& region);
+  void EraseRegion(Region& region);
+
+  Tree* free_by_size_ = nullptr;
+  Tree* free_by_addr_ = nullptr;
+};

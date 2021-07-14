@@ -59,7 +59,7 @@ static void mm_register_pa(uintptr_t begin, uintptr_t end) {
   }
 
   printf("Registering PAs: [%x, %x)\n", begin, end);
-  int err = addr_mgr_add_vas(&g_pa_mgr, begin, (end - begin) / PAGE_SIZE);
+  int err = g_pa_mgr.AddVas(begin, (end - begin) / PAGE_SIZE);
   PANIC_IF(err != 0, "Registering physical addresses failed");
 }
 
@@ -70,10 +70,8 @@ void mm_init(multiboot_info_t* mbd) {
 
   __malloc_init();
 
-  addr_mgr_ctor(&g_kernel_va_mgr);
-
   uintptr_t num_heap_pages = (0 - PAGE_SIZE - KERNEL_HEAP_VA) / PAGE_SIZE;
-  int err = addr_mgr_add_vas(&g_kernel_va_mgr, KERNEL_HEAP_VA, num_heap_pages);
+  int err = g_kernel_va_mgr.AddVas(KERNEL_HEAP_VA, num_heap_pages);
   PANIC_IF(err != 0, "Registering virtual addresses failed");
 
   const uintptr_t kernel_begin = arch::KernelBegin();
@@ -107,13 +105,13 @@ void mm_init(multiboot_info_t* mbd) {
 }
 
 VirtAddr mm_alloc_page_va(size_t num_pages) {
-  return addr_mgr_alloc(&g_kernel_va_mgr, num_pages);
+  return g_kernel_va_mgr.Alloc(num_pages);
 }
 
 void mm_free_page_va(VirtAddr addr, size_t num_pages) {
-  addr_mgr_free(&g_kernel_va_mgr, addr, num_pages);
+  g_kernel_va_mgr.Free(addr, num_pages);
 }
 
-PhysAddr mm_alloc_page_pa(void) { return addr_mgr_alloc(&g_pa_mgr, 1); }
+PhysAddr mm_alloc_page_pa(void) { return g_pa_mgr.Alloc(1); }
 
-void mm_free_page_pa(PhysAddr addr) { addr_mgr_free(&g_pa_mgr, addr, 1); }
+void mm_free_page_pa(PhysAddr addr) { g_pa_mgr.Free(addr, 1); }

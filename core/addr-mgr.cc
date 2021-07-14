@@ -4,20 +4,24 @@
 
 #include "core/macros.h"
 
-typedef struct {
+struct AddrMgr::Region {
+  size_t size() const {
+    assert(end >= begin);
+    return end - begin;
+  }
+
   Tree addr_node;
   Tree size_node;
 
-  uintptr_t begin;
-  uintptr_t end;
-} Region;
+  uintptr_t begin = 0;
+  uintptr_t end = 0;
+};
 
-static size_t region_size(const Region* region) {
-  assert(region->end >= region->begin);
-  return region->end - region->begin;
-}
+namespace {
 
-static int TreeVaCmp(Tree* lt, Tree* rt) {
+using Region = AddrMgr::Region;
+
+int TreeVaCmp(Tree* lt, Tree* rt) {
   Region* l = CONTAINER_OF(lt, Region, addr_node);
   Region* r = CONTAINER_OF(rt, Region, addr_node);
 
@@ -32,21 +36,18 @@ static int TreeVaCmp(Tree* lt, Tree* rt) {
   return 0;
 }
 
-static int TreeSizeCmp(Tree* lt, Tree* rt) {
+int TreeSizeCmp(Tree* lt, Tree* rt) {
   Region* l = CONTAINER_OF(lt, Region, size_node);
   Region* r = CONTAINER_OF(rt, Region, size_node);
 
-  uintptr_t l_size = region_size(l);
-  uintptr_t r_size = region_size(r);
+  assert(l->size() >= PAGE_SIZE);
+  assert(r->size() >= PAGE_SIZE);
 
-  assert(l_size >= PAGE_SIZE);
-  assert(r_size >= PAGE_SIZE);
-
-  if (l_size < r_size) {
+  if (l->size() < r->size()) {
     return -1;
   }
 
-  if (l_size > r_size) {
+  if (l->size() > r->size()) {
     return 1;
   }
 
@@ -61,49 +62,85 @@ static int TreeSizeCmp(Tree* lt, Tree* rt) {
   return 0;
 }
 
-void addr_mgr_ctor(AddrMgr* vam) {
-  vam->free_by_size = NULL;
-  vam->free_by_addr = NULL;
-}
-
-static void addr_mgr_free_tree(Tree* t) {
-  if (t == NULL) {
+void FreeTree(Tree* t) {
+  if (t == nullptr) {
     return;
   }
-  addr_mgr_free_tree(t->left);
-  addr_mgr_free_tree(t->right);
+  FreeTree(t->left);
+  FreeTree(t->right);
 
   Region* region = CONTAINER_OF(t, Region, addr_node);
-  free(region);
+  delete region;
 }
 
-void addr_mgr_dtor(AddrMgr* vam) {
+Region* FindRegion(const Tree* t, size_t size) {
+  if (t == NULL) {
+    return NULL;
+  }
+
+  Region* r = CONTAINER_OF(t, Region, size_node);
+
+  // Exact size.
+  if (r->size() == size) {
+    return r;
+  }
+
+  // Too small, check larger regions.
+  if (r->size() < size) {
+    return FindRegion(t->right, size);
+  }
+
+  // Bigger than needed, so try to find a smaller one.
+  Region* l_region = FindRegion(t->left, size);
+  if (l_region != NULL) {
+    return l_region;
+  }
+
+  return r;
+}
+
+Region* FindAdjacentLeft(Tree* t, uintptr_t begin) {
+  if (t == NULL) {
+    return NULL;
+  }
+
+  Region* region = CONTAINER_OF(t, Region, addr_node);
+  if (begin < region->end) {
+    return FindAdjacentLeft(t->left, begin);
+  }
+
+  if (begin > region->end) {
+    return FindAdjacentLeft(t->right, begin);
+  }
+
+  return region;
+}
+
+Region* FindAdjacentRight(Tree* t, uintptr_t end) {
+  if (t == NULL) {
+    return NULL;
+  }
+
+  Region* region = CONTAINER_OF(t, Region, addr_node);
+  if (end < region->begin) {
+    return FindAdjacentRight(t->left, end);
+  }
+
+  if (end > region->begin) {
+    return FindAdjacentRight(t->right, end);
+  }
+
+  return region;
+}
+
+}  // namespace
+
+AddrMgr::~AddrMgr() {
   // Both trees point to the same nodes.
-  addr_mgr_free_tree(vam->free_by_addr);
-
-  vam->free_by_size = NULL;
-  vam->free_by_addr = NULL;
+  FreeTree(free_by_addr_);
 }
 
-static void addr_mgr_insert_region(AddrMgr* vam, Region* region) {
-  Tree* existing =
-      tree_insert(&vam->free_by_addr, &region->addr_node, &TreeVaCmp);
-  assert(existing == NULL);
-
-  existing = tree_insert(&vam->free_by_size, &region->size_node, TreeSizeCmp);
-  assert(existing == NULL);
-}
-
-static void addr_mgr_erase_region(AddrMgr* vam, Region* region) {
-  Tree* deleted =
-      tree_erase(&vam->free_by_size, &region->size_node, TreeSizeCmp);
-  assert(deleted == &region->size_node);
-
-  deleted = tree_erase(&vam->free_by_addr, &region->addr_node, TreeVaCmp);
-  assert(deleted == &region->addr_node);
-}
-
-int addr_mgr_add_vas(AddrMgr* vam, uintptr_t va, size_t num_pages) {
+int AddrMgr::AddVas(uintptr_t va, size_t num_pages) {
   if (num_pages == 0) {
     return 0;
   }
@@ -123,98 +160,36 @@ int addr_mgr_add_vas(AddrMgr* vam, uintptr_t va, size_t num_pages) {
   region->begin = begin;
   region->end = end;
 
-  addr_mgr_insert_region(vam, region);
+  InsertRegion(*region);
   return 0;
 }
 
-static Region* addr_mgr_alloc_find_region(const Tree* t, size_t size) {
-  if (t == NULL) {
-    return NULL;
-  }
-
-  Region* r = CONTAINER_OF(t, Region, size_node);
-  size_t r_size = region_size(r);
-
-  // Exact size.
-  if (r_size == size) {
-    return r;
-  }
-
-  // Too small, check larger regions.
-  if (r_size < size) {
-    return addr_mgr_alloc_find_region(t->right, size);
-  }
-
-  // Bigger than needed, so try to find a smaller one.
-  Region* l_region = addr_mgr_alloc_find_region(t->left, size);
-  if (l_region != NULL) {
-    return l_region;
-  }
-
-  return r;
-}
-
-uintptr_t addr_mgr_alloc(AddrMgr* vam, size_t num_pages) {
+uintptr_t AddrMgr::Alloc(size_t num_pages) {
   size_t size = num_pages * PAGE_SIZE;
-
-  Region* region = addr_mgr_alloc_find_region(vam->free_by_size, size);
+  Region* region = FindRegion(free_by_size_, size);
   if (region == NULL) {
     return 0;
   }
 
   const uintptr_t ret = region->begin;
-  addr_mgr_erase_region(vam, region);
+  EraseRegion(*region);
 
   // Update the region.
   region->begin += size;
 
   // Allocated whole region.
-  if (region_size(region) == 0) {
-    free(region);
+  if (region->size() == 0) {
+    delete region;
     return ret;
   }
 
   // Store second half in free lists.
-  addr_mgr_insert_region(vam, region);
+  InsertRegion(*region);
 
   return ret;
 }
 
-static Region* find_adjacent_left(Tree* t, uintptr_t begin) {
-  if (t == NULL) {
-    return NULL;
-  }
-
-  Region* region = CONTAINER_OF(t, Region, addr_node);
-  if (begin < region->end) {
-    return find_adjacent_left(t->left, begin);
-  }
-
-  if (begin > region->end) {
-    return find_adjacent_left(t->right, begin);
-  }
-
-  return region;
-}
-
-static Region* find_adjacent_right(Tree* t, uintptr_t end) {
-  if (t == NULL) {
-    return NULL;
-  }
-
-  Region* region = CONTAINER_OF(t, Region, addr_node);
-  if (end < region->begin) {
-    return find_adjacent_right(t->left, end);
-  }
-
-  if (end > region->begin) {
-    return find_adjacent_right(t->right, end);
-  }
-
-  return region;
-}
-
-void addr_mgr_free(AddrMgr* vam, uintptr_t addr, size_t num_pages) {
+void AddrMgr::Free(uintptr_t addr, size_t num_pages) {
   if (num_pages == 0) {
     return;
   }
@@ -224,7 +199,7 @@ void addr_mgr_free(AddrMgr* vam, uintptr_t addr, size_t num_pages) {
       .begin = addr,
       .end = addr + size,
   };
-  if (tree_find(vam->free_by_addr, &key.addr_node, TreeVaCmp) != NULL) {
+  if (tree_find(free_by_addr_, &key.addr_node, TreeVaCmp) != NULL) {
     PANIC("%s: Double free of VA: [%p, %p)", __func__, (void*)key.begin,
           (void*)key.end);
   }
@@ -234,21 +209,21 @@ void addr_mgr_free(AddrMgr* vam, uintptr_t addr, size_t num_pages) {
   Region* new_region = NULL;
 
   // See if we can coalesce adjacent regions.
-  Region* adjacent_left = find_adjacent_left(vam->free_by_addr, key.begin);
+  Region* adjacent_left = FindAdjacentLeft(free_by_addr_, key.begin);
   if (adjacent_left) {
     new_begin = adjacent_left->begin;
-    addr_mgr_erase_region(vam, adjacent_left);
+    EraseRegion(*adjacent_left);
 
     new_region = adjacent_left;
   }
 
-  Region* adjacent_right = find_adjacent_right(vam->free_by_addr, key.end);
+  Region* adjacent_right = FindAdjacentRight(free_by_addr_, key.end);
   if (adjacent_right) {
     new_end = adjacent_right->end;
-    addr_mgr_erase_region(vam, adjacent_right);
+    EraseRegion(*adjacent_right);
 
     if (new_region != NULL) {
-      free(adjacent_right);
+      delete adjacent_right;
     } else {
       new_region = adjacent_right;
     }
@@ -265,5 +240,22 @@ void addr_mgr_free(AddrMgr* vam, uintptr_t addr, size_t num_pages) {
 
   new_region->begin = new_begin;
   new_region->end = new_end;
-  addr_mgr_insert_region(vam, new_region);
+  InsertRegion(*new_region);
 }
+
+void AddrMgr::InsertRegion(Region& region) {
+  Tree* existing = tree_insert(&free_by_addr_, &region.addr_node, &TreeVaCmp);
+  assert(existing == NULL);
+
+  existing = tree_insert(&free_by_size_, &region.size_node, TreeSizeCmp);
+  assert(existing == NULL);
+}
+
+void AddrMgr::EraseRegion(Region& region) {
+  Tree* deleted = tree_erase(&free_by_size_, &region.size_node, TreeSizeCmp);
+  assert(deleted == &region.size_node);
+
+  deleted = tree_erase(&free_by_addr_, &region.addr_node, TreeVaCmp);
+  assert(deleted == &region.addr_node);
+}
+

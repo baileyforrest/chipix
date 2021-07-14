@@ -39,13 +39,13 @@ extern "C" void kernel_main(multiboot_info_t* mbd, unsigned int magic) {
   baz = new Foo;
 
   printf("foo: %p, bar: %p, baz: %p\n", foo, bar, baz);
-  free(foo);
+  delete foo;
   foo = new Foo;
   printf("foo: %p, bar: %p, baz: %p\n", foo, bar, baz);
 
-  free(foo);
-  free(baz);
-  free(bar);
+  delete foo;
+  delete baz;
+  delete bar;
 
   foo = new Foo;
   printf("foo: %p, %d\n", foo, foo->x);

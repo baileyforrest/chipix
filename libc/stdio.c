@@ -210,10 +210,7 @@ int printf(const char* restrict format, ...) {
 
 int putchar(int c) {
 #ifdef LIBC_IS_LIBK
-  {
-    char as_char = c;
-    TtyWrite(&as_char, 1);
-  }
+  TtyPutchar(c);
 #endif  // LIBC_IS_LIBK
 
   return c;
