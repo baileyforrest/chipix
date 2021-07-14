@@ -12,14 +12,23 @@ ARCH_DIR := arch/$(ARCH)
 CFLAGS := $(CFLAGS) -ffreestanding \
 	-Wall -Wextra -Werror -Wno-array-bounds -Wno-sign-compare
 
-CPPFLAGS:=$(CPPFLAGS) -DLIBC_IS_LIBK -I. -Ilibc/include -I$(ARCH_DIR)/include
+CPPFLAGS:=$(CPPFLAGS) -DLIBC_IS_LIBK \
+	-I$(ARCH_DIR)/include \
+	-Ilibc/include \
+	-Ilibcxx/include \
+	-I.
+
 LIBS := -nostdlib -lgcc
 
-SRC_DIRS = $(ARCH_DIR) core cxxrt libc
+SRC_DIRS = $(ARCH_DIR) core libc libcxx
 OBJS = \
 	$(patsubst %.s,%.o,$(shell find $(SRC_DIRS) -name '*.s')) \
 	$(patsubst %.c,%.o,$(shell find $(SRC_DIRS) -name '*.c')) \
 	$(patsubst %.cc,%.o,$(shell find $(SRC_DIRS) -name '*.cc')) \
+
+CRT_DIR = arch/crt/$(ARCH)
+CRTI_OBJ = $(patsubst %.s,%.o,$(shell find $(CRT_DIR) -name 'crti.s'))
+CRTN_OBJ = $(patsubst %.s,%.o,$(shell find $(CRT_DIR) -name 'crtn.s'))
 
 .SUFFIXES: .o .c .cc .s
 .c.o:
@@ -35,10 +44,14 @@ OBJS = \
 all: out/kernel.iso
 
 LINK_LIST = \
+	$(CRTI_OBJ) \
+	$(shell $(CC) $(CFLAGS) -print-file-name=crtbegin.o) \
 	$(OBJS) \
+	$(shell $(CC) $(CFLAGS) -print-file-name=crtend.o) \
+	$(CRTN_OBJ) \
 	$(LIBS)
 
-out/kernel.bin: $(OBJS) $(ARCH_DIR)/linker.ld
+out/kernel.bin: $(OBJS) $(CRTI_OBJ) $(CRTN_OBJ) $(ARCH_DIR)/linker.ld
 	$(CXX) -T $(ARCH_DIR)/linker.ld -o $@ $(CFLAGS) $(LINK_LIST)
 
 out/kernel.iso: out/kernel.bin boot/grub.cfg

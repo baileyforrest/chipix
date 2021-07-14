@@ -2,6 +2,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#include <new>
+
 extern "C" {
 
 #include "core/macros.h"
@@ -15,6 +17,14 @@ extern "C" {
 #error "You are not using a cross-compiler"
 #endif
 
+struct Foo {
+  Foo() { x = 3; }
+
+  int x = 1;
+};
+
+Foo global;
+
 extern "C" void kernel_main(multiboot_info_t* mbd, unsigned int magic) {
   tty_init();
 
@@ -24,23 +34,29 @@ extern "C" void kernel_main(multiboot_info_t* mbd, unsigned int magic) {
 
   mm_init(mbd);
 
-  int* foo;
-  int* bar;
-  int* baz;
+  Foo* foo;
+  Foo* bar;
+  Foo* baz;
 
-  foo = new int;
-  bar = new int;
-  baz = new int;
+  foo = new Foo;
+  bar = new Foo;
+  baz = new Foo;
 
   printf("foo: %p, bar: %p, baz: %p\n", foo, bar, baz);
   free(foo);
-  foo = new int;
+  foo = new Foo;
   printf("foo: %p, bar: %p, baz: %p\n", foo, bar, baz);
 
   free(foo);
   free(baz);
   free(bar);
 
-  foo = new int;
-  printf("foo: %p\n", foo);
+  foo = new Foo;
+  printf("foo: %p, %d\n", foo, foo->x);
+
+  int x = 0;
+  auto* placement = new (&x) Foo;
+  printf("placement: %d\n", placement->x);
+
+  printf("global: %d\n", global.x);
 }

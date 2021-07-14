@@ -101,10 +101,13 @@ _start:
 4:
 	// Set up the stack.
 	mov $stack_top, %esp
-
-	// Enter the high-level kernel.
 	push %eax  // magic
 	push %ebx  // multiboot_info_t*
+
+	// Call global ctors.
+	call _init
+
+	// Enter the high-level kernel.
 	call kernel_main
 
 	// Infinite loop if the system has nothing more to do.

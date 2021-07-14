@@ -17,13 +17,19 @@ typedef struct {
 } PrintfState;
 
 static int printf_int(PrintfState* state, bool is_negtive,
-                      unsigned long long val) {
+                      unsigned long long val, int pad_digits) {
   char buf[32];
   int idx = 0;
 
   while (val != 0) {
     buf[idx++] = '0' + val % 10;
     val /= 10;
+  }
+
+  for (int i = idx; i < pad_digits; ++i) {
+    if (putchar('0') == EOF) {
+      return -1;
+    }
   }
 
   if (is_negtive) {
@@ -120,7 +126,7 @@ int printf(const char* restrict format, ...) {
       int val = va_arg(args, int);
       unsigned long long ull_val = val < 0 ? -val : val;
 
-      if (printf_int(&state, val < 0, ull_val) < 0) {
+      if (printf_int(&state, val < 0, ull_val, 1) < 0) {
         return -1;
       }
       continue;
