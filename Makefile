@@ -23,15 +23,15 @@ LIBS := -nostdlib -lgcc
 
 SRC_DIRS = $(ARCH_DIR) core libc libcxx
 OBJS = \
-	$(patsubst %.s,%.o,$(shell find $(SRC_DIRS) -name '*.s')) \
+	$(patsubst %.S,%.o,$(shell find $(SRC_DIRS) -name '*.S')) \
 	$(patsubst %.c,%.o,$(shell find $(SRC_DIRS) -name '*.c')) \
 	$(patsubst %.cc,%.o,$(shell find $(SRC_DIRS) -name '*.cc')) \
 
 CRT_DIR = arch/crt/$(ARCH)
-CRTI_OBJ = $(patsubst %.s,%.o,$(shell find $(CRT_DIR) -name 'crti.s'))
-CRTN_OBJ = $(patsubst %.s,%.o,$(shell find $(CRT_DIR) -name 'crtn.s'))
+CRTI_OBJ = $(patsubst %.S,%.o,$(shell find $(CRT_DIR) -name 'crti.S'))
+CRTN_OBJ = $(patsubst %.S,%.o,$(shell find $(CRT_DIR) -name 'crtn.S'))
 
-.SUFFIXES: .o .c .cc .s
+.SUFFIXES: .o .c .cc .S
 .c.o:
 	$(CC) -MD -c $< -o $@ -std=c11 $(CFLAGS) $(CPPFLAGS)
 
@@ -39,7 +39,7 @@ CRTN_OBJ = $(patsubst %.s,%.o,$(shell find $(CRT_DIR) -name 'crtn.s'))
 	$(CXX) -MD -c $< -o $@ -std=c++17 $(CFLAGS) $(CPPFLAGS) \
 		-fno-exceptions -fno-rtti
 
-.s.o:
+.S.o:
 	$(CC) -MD -c $< -o $@ $(CFLAGS) $(CPPFLAGS)
 
 all: out/kernel.iso
