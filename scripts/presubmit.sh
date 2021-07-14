@@ -15,5 +15,9 @@ echo -e "$COLOR## Formatting source code...$NC"
 $SCRIPT_DIR/format.sh
 echo -e "${COLOR}Done\n$NC"
 
+echo -e "$COLOR## Linting source code...$NC"
+$SCRIPT_DIR/lint.sh
+echo -e "${COLOR}Done\n$NC"
+
 echo
 echo -e "${COLOR}SUCCESS\n$NC"

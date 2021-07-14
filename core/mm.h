@@ -3,7 +3,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#include "core/multiboot.h"
+#include "third_party/multiboot.h"
 
 typedef uintptr_t PhysAddr;
 typedef uintptr_t VirtAddr;

@@ -6,8 +6,8 @@
 
 #include "core/macros.h"
 #include "core/mm.h"
-#include "core/multiboot.h"
 #include "core/tty.h"
+#include "third_party/multiboot.h"
 
 #ifdef __linux__
 #error "You are not using a cross-compiler"
