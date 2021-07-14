@@ -11,7 +11,7 @@ SECTIONS {
    */
   . = 1M;
 
-  _kernel_start = .;
+  _kernel_begin = .;
   .multiboot.data : { *(.multiboot.data) }
   .multiboot.text : { *(.multiboot.text) }
 

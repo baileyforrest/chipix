@@ -212,7 +212,7 @@ int putchar(int c) {
 #ifdef LIBC_IS_LIBK
   {
     char as_char = c;
-    tty_write(&as_char, 1);
+    TtyWrite(&as_char, 1);
   }
 #endif  // LIBC_IS_LIBK
 

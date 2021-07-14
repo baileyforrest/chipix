@@ -22,7 +22,7 @@ struct Foo {
 Foo global;
 
 extern "C" void kernel_main(multiboot_info_t* mbd, unsigned int magic) {
-  tty_init();
+  TtyInit();
 
   if (magic != MULTIBOOT_BOOTLOADER_MAGIC) {
     PANIC("Invalid multiboot magic: %x", magic);

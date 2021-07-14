@@ -18,5 +18,7 @@ void mm_free_page_va(VirtAddr addr, size_t num_pages);
 PhysAddr mm_alloc_page_pa(void);
 void mm_free_page_pa(PhysAddr addr);
 
-uintptr_t mm_arch_kernel_start(void);
-uintptr_t mm_arch_kernel_end(void);
+namespace arch {
+uintptr_t KernelBegin();
+uintptr_t KernelEnd();
+}  // namespace arch

@@ -76,8 +76,8 @@ void mm_init(multiboot_info_t* mbd) {
   int err = addr_mgr_add_vas(&g_kernel_va_mgr, KERNEL_HEAP_VA, num_heap_pages);
   PANIC_IF(err != 0, "Registering virtual addresses failed");
 
-  const uintptr_t kernel_begin = mm_arch_kernel_start();
-  const uintptr_t kernel_end = mm_arch_kernel_end();
+  const uintptr_t kernel_begin = arch::KernelBegin();
+  const uintptr_t kernel_end = arch::KernelEnd();
   printf("kernel_pa: [%x, %x)\n", kernel_begin, kernel_end);
 
   for (int i = 0; i < mbd->mmap_length; i += sizeof(multiboot_memory_map_t)) {

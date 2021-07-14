@@ -3,13 +3,15 @@
 #include <arch.h>
 #include <stdio.h>
 
-#include "core/macros.h"
-
-extern "C" char _kernel_start;
+extern "C" char _kernel_begin;
 extern "C" char _kernel_end;
 
-uintptr_t mm_arch_kernel_start(void) { return (uintptr_t)&_kernel_start; }
+namespace arch {
 
-uintptr_t mm_arch_kernel_end(void) {
+uintptr_t KernelBegin() { return (uintptr_t)&_kernel_begin; }
+
+uintptr_t KernelEnd() {
   return (uintptr_t)&_kernel_end - KERNEL_HIGH_VA;
+}
+
 }
