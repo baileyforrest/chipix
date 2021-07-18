@@ -9,7 +9,7 @@
 #include <algorithm>
 
 #include "libc/tagged-val.h"
-#include "libc/dlist.h"
+#include "libc/intrusive-list.h"
 #include "libc/macros.h"
 
 namespace {
@@ -61,11 +61,11 @@ Footer* Header::PrevFooter() {
   return reinterpret_cast<Footer*>(this) - 1;
 }
 
-Header* FreeNodeHeader(const Dlist* link) { return (Header*)link - 1; }
+Header* FreeNodeHeader(IntrusiveList::Node* node) { return reinterpret_cast<Header*>(node) - 1; }
 
 // Single free list with first fit allocation.
 // TODO(bcf): Use better scheme like free list per size.
-Dlist g_free_list;
+IntrusiveList g_free_list;
 
 Header* AllocNode(size_t size) {
   static_assert(sizeof(Header) <= alignof(max_align_t));
@@ -114,13 +114,12 @@ void* MallocImpl(size_t size, bool* is_new_pages) {
   size = SizeRound(size);
 
   Header* old_header = nullptr;
-  Dlist* link;
-  DLIST_FOR_EACH(link, &g_free_list) {
-    Header* header = FreeNodeHeader(link);
+  for (auto& link : g_free_list) {
+    Header* header = FreeNodeHeader(&link);
     assert(!header->used());
 
     if (header->size() >= size) {
-      dlist_remove(link);
+      g_free_list.erase(link);
       old_header = header;
       break;
     }
@@ -140,7 +139,7 @@ void* MallocImpl(size_t size, bool* is_new_pages) {
   size_t remain = old_header->size() - size;
 
   // Remaining payload must be large enough to hold the list link.
-  size_t min_payload = SizeRound(sizeof(Dlist));
+  size_t min_payload = SizeRound(sizeof(IntrusiveList::Node));
 
   // Not enough remaining space to create another chunk. Just return the whole
   // chunk.
@@ -161,8 +160,8 @@ void* MallocImpl(size_t size, bool* is_new_pages) {
   new_header->set_has_next(true);
   new_header->set_used(false);
 
-  Dlist* new_link = reinterpret_cast<Dlist*>(new_header + 1);
-  dlist_prepend(&g_free_list, new_link);
+  auto* new_link = reinterpret_cast<IntrusiveList::Node*>(new_header + 1);
+  g_free_list.push_front(*new_link);
 
   uintptr_t ret = (uintptr_t)(old_header + 1);
   assert(ret % alignof(max_align_t) == 0);
@@ -215,8 +214,6 @@ Footer* TryCoalesceFooter(Footer* footer) {
 
 }  // namespace
 
-void __malloc_init(void) { dlist_init(&g_free_list); }
-
 void* malloc(size_t size) {
   bool is_new_pages;
   return MallocImpl(size, &is_new_pages);
@@ -227,7 +224,7 @@ void free(void* ptr) {
     return;
   }
 
-  Header* header = FreeNodeHeader(reinterpret_cast<Dlist*>(ptr));
+  Header* header = FreeNodeHeader(reinterpret_cast<IntrusiveList::Node*>(ptr));
   assert(header->used());
 
   Footer* footer = header->GetFooter();
@@ -241,8 +238,8 @@ void free(void* ptr) {
 
   // TODO(bcf): Return fully freed pages to kernel.
 
-  Dlist* link = reinterpret_cast<Dlist*>(header + 1);
-  dlist_prepend(&g_free_list, link);
+  auto* link = reinterpret_cast<IntrusiveList::Node*>(header + 1);
+  g_free_list.push_front(*link);
 }
 
 void* calloc(size_t nmemb, size_t size) {

@@ -63,8 +63,6 @@ void Init(multiboot_info_t* mbd) {
     PANIC("invalid memory map given by GRUB bootloader");
   }
 
-  __malloc_init();
-
   uintptr_t num_heap_pages = (0 - PAGE_SIZE - KERNEL_HEAP_VA) / PAGE_SIZE;
   int err = g_kernel_va_mgr.AddVas(KERNEL_HEAP_VA, num_heap_pages);
   PANIC_IF(err != 0, "Registering virtual addresses failed");
