@@ -9,7 +9,7 @@ extern "C" {
 #endif
 
 #ifdef NDEBUG
-#define assert(expr) ((void)0)
+#define assert(expr) ((void)(expr))
 #else
 #define assert(expr)                                                          \
   do {                                                                        \
