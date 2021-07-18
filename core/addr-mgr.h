@@ -3,13 +3,11 @@
 #include <assert.h>
 #include <stddef.h>
 
+#include "core/intrusive-atl-tree.h"
 #include "core/mm.h"
-#include "core/tree.h"
 
 class AddrMgr {
  public:
-  struct Region;
-
   AddrMgr() = default;
   ~AddrMgr();
 
@@ -21,10 +19,15 @@ class AddrMgr {
   uintptr_t Alloc(size_t num_pages);
   void Free(uintptr_t addr, size_t num_pages);
 
+  struct Region;
+
  private:
+  static int CompareVa(AvlNode* lhs, AvlNode* rhs);
+  static int CompareSize(AvlNode* lhs, AvlNode* rhs);
+
   void InsertRegion(Region& region);
   void EraseRegion(Region& region);
 
-  Tree* free_by_size_ = nullptr;
-  Tree* free_by_addr_ = nullptr;
+  IntrusiveAvlTree<CompareSize> free_by_size_;
+  IntrusiveAvlTree<CompareVa> free_by_addr_;
 };
