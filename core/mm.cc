@@ -14,8 +14,8 @@
 
 namespace {
 
-static AddrMgr g_kernel_va_mgr;
-static AddrMgr g_pa_mgr;
+AddrMgr g_kernel_va_mgr;
+AddrMgr g_pa_mgr;
 
 // Page allocation requires requires heap allocation.
 // Heap allocation requires page allocation.
