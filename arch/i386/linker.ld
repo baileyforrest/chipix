@@ -11,7 +11,7 @@ SECTIONS {
    */
   . = 1M;
 
-  _kernel_begin = .;
+  __kernel_begin = .;
   .multiboot.data : { *(.multiboot.data) }
   .multiboot.text : { *(.multiboot.text) }
 
@@ -40,5 +40,5 @@ SECTIONS {
   }
 
   /* Add a symbol that indicates the end address of the kernel. */
-  _kernel_end = .;
+  __kernel_end = .;
 }

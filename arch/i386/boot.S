@@ -57,7 +57,7 @@ _start:
 	movl $0, %esi
 
 1:
-	cmpl $(_kernel_end - KERNEL_HIGH_VA), %esi
+	cmpl $(__kernel_end - KERNEL_HIGH_VA), %esi
 	jge 3f
 
 	// Map physical address as "present, writable". Note that this maps text
