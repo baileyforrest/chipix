@@ -16,17 +16,17 @@ enum class PageSize : u32 {
 struct PageDirectoryEntry {
   union {
     struct {
-      u32 addr : 20;
-      u32 avail : 3;
-      u32 reserved1 : 1;
-      PageSize page_size : 1;
-      u32 reserved2 : 1;
-      volatile bool accessed : 1;
-      bool cache_disabled : 1;
-      bool write_through : 1;
-      bool user_access : 1;
-      bool writable : 1;
       bool present : 1;
+      bool writable : 1;
+      bool user_access : 1;
+      bool write_through : 1;
+      bool cache_disabled : 1;
+      volatile bool accessed : 1;
+      u32 reserved2 : 1;
+      PageSize page_size : 1;
+      u32 reserved1 : 1;
+      u32 avail : 3;
+      u32 addr : 20;
     };
     u32 bits;
   };
@@ -53,17 +53,17 @@ static_assert(sizeof(PageDirectory) == PAGE_SIZE);
 struct PageTableEntry {
   union {
     struct {
-      u32 addr : 20;
-      u32 avail : 3;
-      u32 global : 1;
-      u32 reserved1 : 1;
-      volatile bool dirty : 1;
-      volatile bool accessed : 1;
-      bool cache_disabled : 1;
-      bool write_through : 1;
-      bool user_access : 1;
-      bool writable : 1;
       bool present : 1;
+      bool writable : 1;
+      bool user_access : 1;
+      bool write_through : 1;
+      bool cache_disabled : 1;
+      volatile bool accessed : 1;
+      volatile bool dirty : 1;
+      u32 reserved1 : 1;
+      u32 global : 1;
+      u32 avail : 3;
+      u32 addr : 20;
     };
     u32 bits;
   };
