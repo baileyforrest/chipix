@@ -12,6 +12,8 @@
 #include "libc/macros.h"
 #include "libc/malloc.h"
 
+namespace {
+
 static AddrMgr g_kernel_va_mgr;
 static AddrMgr g_pa_mgr;
 
@@ -19,13 +21,14 @@ static AddrMgr g_pa_mgr;
 // Heap allocation requires page allocation.
 //
 // To solve chicken/egg problem use a single static page.
-typedef struct {
+struct Page {
   char data[PAGE_SIZE];
-} Page;
+};
 
 alignas(sizeof(Page)) Page g_default_page;
 bool g_default_page_used = false;
 
+}  // namespace
 
 void* __malloc_alloc_pages(size_t count) {
   if (count <= 0) {
@@ -53,17 +56,9 @@ void __malloc_free_page(void* addr) {
   PANIC("%s: Unimplemented", __func__);
 }
 
-static void mm_register_pa(uintptr_t begin, uintptr_t end) {
-  if (begin == end) {
-    return;
-  }
+namespace mm {
 
-  printf("Registering PAs: [%x, %x)\n", begin, end);
-  int err = g_pa_mgr.AddVas(begin, (end - begin) / PAGE_SIZE);
-  PANIC_IF(err != 0, "Registering physical addresses failed");
-}
-
-void mm_init(multiboot_info_t* mbd) {
+void Init(multiboot_info_t* mbd) {
   if (!((mbd->flags >> 6) & 1)) {
     PANIC("invalid memory map given by GRUB bootloader");
   }
@@ -87,8 +82,19 @@ void mm_init(multiboot_info_t* mbd) {
     uintptr_t begin = mmmt->addr;
     uintptr_t end = begin + mmmt->len;
 
+
+    auto register_pa = [](uintptr_t begin, uintptr_t end) {
+      if (begin == end) {
+        return;
+      }
+
+      printf("Registering PAs: [%x, %x)\n", begin, end);
+      int err = g_pa_mgr.AddVas(begin, (end - begin) / PAGE_SIZE);
+      PANIC_IF(err != 0, "Registering physical addresses failed");
+    };
+
     if (kernel_begin >= begin && kernel_end <= end) {
-      mm_register_pa(begin, kernel_begin);
+      register_pa(begin, kernel_begin);
 
       begin = kernel_end;
       end = std::max(begin, end);
@@ -98,20 +104,26 @@ void mm_init(multiboot_info_t* mbd) {
       begin = kernel_end;
     }
 
-    mm_register_pa(begin, end);
+    register_pa(begin, end);
   }
 
   // TODO(bcf): Unmap identify page table mappings.
 }
 
-VirtAddr mm_alloc_page_va(size_t num_pages) {
-  return g_kernel_va_mgr.Alloc(num_pages);
+VirtAddr AllocPagesVa(size_t num_pages) {
+  return VirtAddr(g_kernel_va_mgr.Alloc(num_pages));
 }
 
-void mm_free_page_va(VirtAddr addr, size_t num_pages) {
-  g_kernel_va_mgr.Free(addr, num_pages);
+void FreePagesVa(VirtAddr addr, size_t num_pages) {
+  g_kernel_va_mgr.Free(addr.val(), num_pages);
 }
 
-PhysAddr mm_alloc_page_pa(void) { return g_pa_mgr.Alloc(1); }
+PhysAddr AllocPagesPa(size_t num_pages) {
+  return PhysAddr(g_pa_mgr.Alloc(num_pages));
+}
 
-void mm_free_page_pa(PhysAddr addr) { g_pa_mgr.Free(addr, 1); }
+void FreePagePa(PhysAddr addr, size_t num_pages) {
+  g_pa_mgr.Free(addr.val(), num_pages);
+}
+
+}  // namespace mm

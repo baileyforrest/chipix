@@ -28,7 +28,7 @@ extern "C" void kernel_main(multiboot_info_t* mbd, unsigned int magic) {
     PANIC("Invalid multiboot magic: %x", magic);
   }
 
-  mm_init(mbd);
+  mm::Init(mbd);
 
   Foo* foo;
   Foo* bar;
