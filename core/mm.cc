@@ -104,8 +104,6 @@ void Init(multiboot_info_t* mbd) {
 
     register_pa(begin, end);
   }
-
-  // TODO(bcf): Unmap identify page table mappings.
 }
 
 VirtAddr AllocPagesVa(size_t num_pages) {

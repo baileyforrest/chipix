@@ -1,3 +1,4 @@
+#include <arch.h>
 #include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -29,6 +30,7 @@ extern "C" void kernel_main(multiboot_info_t* mbd, unsigned int magic) {
   }
 
   mm::Init(mbd);
+  arch::Init();
 
   Foo* foo;
   Foo* bar;

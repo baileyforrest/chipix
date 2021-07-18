@@ -65,8 +65,8 @@ out/kernel.iso: out/kernel.bin boot/grub.cfg
 .PHONY: clean
 clean:
 	rm -rf out/*
-	rm -f $(OBJS)
-	rm -f $(OBJS:.o=.d)
+	rm -f $(shell find $(SRC_DIRS) $(CRT_DIR) -name '*.o')
+	rm -f $(shell find $(SRC_DIRS) -name '*.d')
 
 .PHONY: bochs
 bochs: out/kernel.iso

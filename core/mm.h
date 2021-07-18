@@ -21,6 +21,14 @@ void FreePagesPa(PhysAddr addr, size_t num_pages);
 }  // namespace mm
 
 namespace arch {
+
+struct PageDirectory;
+extern PageDirectory* cur_page_dir;
+
 uintptr_t KernelBegin();
 uintptr_t KernelEnd();
+
+void SetPageDir(PageDirectory* page_dir);
+void FlushTlb();
+
 }  // namespace arch

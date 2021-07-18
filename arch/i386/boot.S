@@ -36,9 +36,12 @@ stack_top:
 // or modules there. This lets the bootloader know it must avoid the addresses.
 .section .bss, "aw", @nobits
 .align PAGE_SIZE
-boot_page_directory:
+.global __boot_page_directory
+__boot_page_directory:
+
 .skip PAGE_SIZE
-boot_page_table1:
+.global __boot_page_table1
+__boot_page_table1:
 .skip PAGE_SIZE
 // Further page tables may be required if the kernel grows beyond 3 MiB.
 
@@ -47,8 +50,8 @@ boot_page_table1:
 .global _start
 .type _start, @function
 _start:
-	// Physical address of boot_page_table1.
-	movl $(boot_page_table1 - KERNEL_HIGH_VA), %edi
+	// Physical address of __boot_page_table1.
+	movl $(__boot_page_table1 - KERNEL_HIGH_VA), %edi
 
 	// First address to map is address 0.
 	movl $0, %esi
@@ -64,14 +67,14 @@ _start:
 	movl %edx, (%edi)
 
 	addl $PAGE_SIZE, %esi
-	// Size of entries in boot_page_table1 is 4 bytes.
+	// Size of entries in __boot_page_table1 is 4 bytes.
 	addl $4, %edi
 	// Loop to the next entry if we haven't finished.
 	loop 1b
 
 3:
 	// Map VGA video memory to 0xc03ff000 as "present, writable".
-	movl $(0x000b8000 | 0x003), boot_page_table1 - KERNEL_HIGH_VA + 1023 * 4
+	movl $(0x000b8000 | 0x003), __boot_page_table1 - KERNEL_HIGH_VA + 1023 * 4
 
 	// The page table is used at both page directory entry 0 (virtually from
 	// 0x0 to 0x3fffff) (thus identity mapping the kernel) and page
@@ -83,11 +86,11 @@ _start:
 
 	// Map the page table to both virtual addresses 0x00000000 and
 	// KERNEL_HIGH_VA.
-	movl $(boot_page_table1 - KERNEL_HIGH_VA + 0x3), boot_page_directory - KERNEL_HIGH_VA + 0
-	movl $(boot_page_table1 - KERNEL_HIGH_VA + 0x3), boot_page_directory - KERNEL_HIGH_VA + 768 * 4
+	movl $(__boot_page_table1 - KERNEL_HIGH_VA + 0x3), __boot_page_directory - KERNEL_HIGH_VA + 0
+	movl $(__boot_page_table1 - KERNEL_HIGH_VA + 0x3), __boot_page_directory - KERNEL_HIGH_VA + 768 * 4
 
-	// Set cr3 to the address of the boot_page_directory.
-	movl $(boot_page_directory - KERNEL_HIGH_VA), %ecx
+	// Set cr3 to the address of the __boot_page_directory.
+	movl $(__boot_page_directory - KERNEL_HIGH_VA), %ecx
 	movl %ecx, %cr3
 
 	// Enable paging and the write-protect bit.

@@ -16,12 +16,18 @@ SECTIONS {
   .multiboot.text : { *(.multiboot.text) }
 
   . += 0xc0000000;
+  _text_begin = .;
   .text ALIGN (4K) : AT (ADDR (.text) - 0xc0000000) {
     *(.text)
   }
+  _text_end = .;
+
+  _rodata_begin = .;
   .rodata ALIGN (4K) : AT (ADDR (.rodata) - 0xc0000000) {
     *(.rodata)
   }
+  _rodata_end = .;
+
   .data ALIGN (4K) : AT (ADDR (.data) - 0xc0000000) {
     *(.data)
   }
