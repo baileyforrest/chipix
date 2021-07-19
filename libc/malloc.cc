@@ -185,6 +185,9 @@ Header* TryCoalesceHeader(Header* header) {
   Header* prev_header = prev_footer->GetHeader();
   assert(!prev_header->used());
 
+  auto* node = reinterpret_cast<IntrusiveList::Node*>(prev_header + 1);
+  g_free_list.erase(*node);
+
   size_t new_size =
       header->size() + prev_header->size() + sizeof(Header) + sizeof(Footer);
   prev_header->set_size(new_size);
@@ -202,6 +205,9 @@ Footer* TryCoalesceFooter(Footer* footer) {
   if (next_header->used()) {
     return footer;
   }
+  auto* node = reinterpret_cast<IntrusiveList::Node*>(next_header + 1);
+  g_free_list.erase(*node);
+
   Header* header = footer->GetHeader();
 
   Footer* next_footer = next_header->GetFooter();

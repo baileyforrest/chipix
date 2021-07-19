@@ -57,4 +57,11 @@ extern "C" void kernel_main(multiboot_info_t* mbd, unsigned int magic) {
   printf("placement: %d\n", placement->x);
 
   printf("global: %d\n", global.x);
+
+  struct Big {
+    char data[4096];
+  };
+
+  auto* big = new Big;
+  printf("big: %p\n", big);
 }

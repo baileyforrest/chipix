@@ -26,16 +26,28 @@ class IntrusiveList {
     Node* next_;
   };
 
-  using iterator = Node*;
+  class iterator {
+   public:
+    explicit iterator(Node* node) : node_(node) {}
 
-  iterator begin() { return node_.next_; }
+    iterator& operator++() {
+      node_ = node_->next_;
+      return *this;
+    }
 
-  iterator end() { return &node_; }
+    Node& operator*() const { return *node_; }
+
+   private:
+    Node* node_ = nullptr;
+  };
 
   explicit IntrusiveList() {
     node_.prev_ = &node_;
     node_.next_ = &node_;
   }
+
+  iterator begin() { return iterator(node_.next_); }
+  iterator end() { return iterator(&node_); }
 
   bool empty() const {
     if (node_.prev_ == &node_) {
@@ -64,3 +76,13 @@ class IntrusiveList {
  private:
   Node node_;
 };
+
+bool operator==(const IntrusiveList::iterator& lhs,
+                const IntrusiveList::iterator& rhs) {
+  return &*lhs == &*rhs;
+}
+
+bool operator!=(const IntrusiveList::iterator& lhs,
+                const IntrusiveList::iterator& rhs) {
+  return &*lhs != &*rhs;
+}
