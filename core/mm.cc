@@ -6,12 +6,15 @@
 #include <stddef.h>
 
 #include <algorithm>
+#include <utility>
 
 #include "core/addr-mgr.h"
+#include "core/cleanup.h"
 #include "core/macros.h"
 #include "libc/macros.h"
 #include "libc/malloc.h"
 
+namespace mm {
 namespace {
 
 AddrMgr g_kernel_va_mgr;
@@ -21,42 +24,29 @@ AddrMgr g_pa_mgr;
 // Heap allocation requires page allocation.
 //
 // To solve chicken/egg problem use a single static page.
-struct Page {
+struct DefaultPage {
   char data[PAGE_SIZE];
 };
 
-alignas(sizeof(Page)) Page g_default_page;
+alignas(PAGE_SIZE) DefaultPage g_default_page;
 bool g_default_page_used = false;
 
+PhysAddr AllocAndMapPhysPages(const VirtAddr virt_begin, const size_t count) {
+  const PhysAddr phys_begin = AllocPagesPa(count);
+  if (phys_begin == PhysAddr(0)) {
+    return PhysAddr(0);
+  }
+  auto clean_pa = MakeCleanup([&] { FreePagesPa(phys_begin, count); });
+
+  if (arch::MapAddr(arch::cur_page_table, virt_begin, phys_begin, count) < 0) {
+    return PhysAddr(0);
+  }
+
+  std::move(clean_pa).Cancel();
+  return phys_begin;
+}
+
 }  // namespace
-
-void* __malloc_alloc_pages(size_t count) {
-  if (count <= 0) {
-    return NULL;
-  }
-
-  if (!g_default_page_used) {
-    assert(count == 1);
-    g_default_page_used = true;
-    return &g_default_page;
-  }
-
-  // TODO(bcf): Implement.
-  PANIC("%s: Unimplemented", __func__);
-  return NULL;
-}
-
-void __malloc_free_page(void* addr) {
-  if (addr == &g_default_page) {
-    g_default_page_used = false;
-    return;
-  }
-
-  // TODO(bcf): Implement.
-  PANIC("%s: Unimplemented", __func__);
-}
-
-namespace mm {
 
 void Init(multiboot_info_t* mbd) {
   if (!((mbd->flags >> 6) & 1)) {
@@ -79,7 +69,6 @@ void Init(multiboot_info_t* mbd) {
 
     uintptr_t begin = mmmt->addr;
     uintptr_t end = begin + mmmt->len;
-
 
     auto register_pa = [](uintptr_t begin, uintptr_t end) {
       if (begin == end) {
@@ -106,6 +95,41 @@ void Init(multiboot_info_t* mbd) {
   }
 }
 
+PagesRef AllocPages(const size_t count) {
+  if (count <= 0) {
+    return {};
+  }
+
+  PagesRef ret(new Pages());
+  if (!ret) {
+    return {};
+  }
+
+  ret->count = count;
+  ret->va = AllocPagesVa(count);
+  if (ret->va == VirtAddr(0)) {
+    return {};
+  }
+  auto clean_va = MakeCleanup([&] { FreePagesVa(ret->va, count); });
+
+  ret->pa = AllocAndMapPhysPages(ret->va, count);
+  if (ret->pa == PhysAddr(0)) {
+    return {};
+  }
+
+  std::move(clean_va).Cancel();
+  return ret;
+}
+
+void FreePages(Pages* pages) {
+  assert(pages->RefCnt() == 0);
+
+  UnmapAddr(arch::cur_page_table, pages->va, pages->count);
+  FreePagesPa(pages->pa, pages->count);
+  FreePagesVa(pages->va, pages->count);
+  delete pages;
+}
+
 VirtAddr AllocPagesVa(size_t num_pages) {
   return VirtAddr(g_kernel_va_mgr.Alloc(num_pages));
 }
@@ -118,8 +142,66 @@ PhysAddr AllocPagesPa(size_t num_pages) {
   return PhysAddr(g_pa_mgr.Alloc(num_pages));
 }
 
-void FreePagePa(PhysAddr addr, size_t num_pages) {
+void FreePagesPa(PhysAddr addr, size_t num_pages) {
   g_pa_mgr.Free(addr.val(), num_pages);
 }
 
 }  // namespace mm
+
+void* __malloc_alloc_pages(const size_t count) {
+  if (count <= 0) {
+    return nullptr;
+  }
+
+  if (!mm::g_default_page_used) {
+    assert(count == 1);
+    mm::g_default_page_used = true;
+    return &mm::g_default_page;
+  }
+
+  const VirtAddr virt_begin = mm::AllocPagesVa(count);
+  if (virt_begin == VirtAddr(0)) {
+    return nullptr;
+  }
+
+  // Malloc doesn't need contiguous physical pages.
+  size_t i = 0;
+  for (; i < count; ++i) {
+    VirtAddr va = virt_begin + i * PAGE_SIZE;
+    PhysAddr pa = mm::AllocAndMapPhysPages(va, 1);
+    if (pa == PhysAddr(0)) {
+      goto error;
+    }
+  }
+
+  return reinterpret_cast<void*>(virt_begin.val());
+
+error:
+  arch::UnmapAddr(arch::cur_page_table, virt_begin, i);
+  for (size_t j = 0; j < i; ++j) {
+    VirtAddr va = virt_begin + j * PAGE_SIZE;
+    PhysAddr pa = LookupPa(arch::cur_page_table, va);
+    mm::FreePagesPa(pa, 1);
+  }
+
+  mm::FreePagesVa(virt_begin, count);
+  return nullptr;
+}
+
+void __malloc_free_page(void* addr, size_t num_pages) {
+  if (addr == &mm::g_default_page) {
+    mm::g_default_page_used = false;
+    return;
+  }
+
+  VirtAddr virt_begin(reinterpret_cast<uintptr_t>(addr));
+  for (size_t i = 0; i < num_pages; ++i) {
+    PhysAddr pa =
+        arch::LookupPa(arch::cur_page_table, virt_begin + i * PAGE_SIZE);
+    assert(pa != PhysAddr(0));
+    mm::FreePagesPa(pa, 1);
+  }
+
+  arch::UnmapAddr(arch::cur_page_table, virt_begin, num_pages);
+  mm::FreePagesVa(virt_begin, num_pages);
+}

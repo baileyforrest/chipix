@@ -3,6 +3,7 @@
 #include <assert.h>
 #include <stddef.h>
 
+#include "arch/i386/memory.h"
 #include "core/types.h"
 #include "libc/macros.h"
 
@@ -21,7 +22,7 @@ struct PageDirectoryEntry {
       bool user_access : 1;
       bool write_through : 1;
       bool cache_disabled : 1;
-      volatile bool accessed : 1;
+      bool accessed : 1;
       u32 reserved2 : 1;
       PageSize page_size : 1;
       u32 reserved1 : 1;
@@ -30,15 +31,13 @@ struct PageDirectoryEntry {
     };
     u32 bits;
   };
-
-  void Clear() { bits = 0; }
 };
 static_assert(sizeof(PageDirectoryEntry) == sizeof(u32));
 
 struct alignas(PAGE_SIZE) PageDirectory {
   static constexpr int kSize = PAGE_SIZE / sizeof(PageDirectoryEntry);
 
-  PageDirectoryEntry& operator[](int index) {
+  volatile PageDirectoryEntry& operator[](int index) {
     assert(index >= 0);
     assert(index < ARRAY_SIZE(entries));
     return entries[index];
@@ -46,7 +45,7 @@ struct alignas(PAGE_SIZE) PageDirectory {
 
   size_t size() const { return kSize; }
 
-  PageDirectoryEntry entries[kSize];
+  volatile PageDirectoryEntry entries[kSize];
 };
 static_assert(sizeof(PageDirectory) == PAGE_SIZE);
 
@@ -58,8 +57,8 @@ struct PageTableEntry {
       bool user_access : 1;
       bool write_through : 1;
       bool cache_disabled : 1;
-      volatile bool accessed : 1;
-      volatile bool dirty : 1;
+      bool accessed : 1;
+      bool dirty : 1;
       u32 reserved1 : 1;
       u32 global : 1;
       u32 avail : 3;
@@ -67,14 +66,13 @@ struct PageTableEntry {
     };
     u32 bits;
   };
-
-  void Clear() { bits = 0; }
 };
 
 struct alignas(PAGE_SIZE) PageTable {
   static constexpr int kSize = PAGE_SIZE / sizeof(PageTableEntry);
+  static constexpr int kBytes = kSize * PAGE_SIZE;
 
-  PageTableEntry& operator[](int index) {
+  volatile PageTableEntry& operator[](int index) {
     assert(index >= 0);
     assert(index < ARRAY_SIZE(entries));
     return entries[index];
@@ -82,7 +80,7 @@ struct alignas(PAGE_SIZE) PageTable {
 
   size_t size() const { return kSize; }
 
-  PageTableEntry entries[kSize];
+  volatile PageTableEntry entries[kSize];
 };
 static_assert(sizeof(PageTable) == PAGE_SIZE);
 

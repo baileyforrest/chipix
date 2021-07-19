@@ -1,5 +1,5 @@
-#ifndef ALGORITHM_H_
-#define ALGORITHM_H_
+#ifndef LIBCXX_ALGORITHM_H_
+#define LIBCXX_ALGORITHM_H_
 
 namespace std {
 
@@ -10,4 +10,4 @@ const T& max(const T& a, const T& b) {
 
 }  // namespace std
 
-#endif  // ALGORITHM_H_
+#endif  // LIBCXX_ALGORITHM_H_

@@ -8,9 +8,9 @@
 
 #include <algorithm>
 
-#include "libc/tagged-val.h"
 #include "libc/intrusive-list.h"
 #include "libc/macros.h"
+#include "libc/tagged-val.h"
 
 namespace {
 
@@ -39,7 +39,8 @@ struct Footer;
 
 struct Header : public Common {
   Footer* GetFooter() {
-    return reinterpret_cast<Footer*>(reinterpret_cast<char*>(this + 1) + size());
+    return reinterpret_cast<Footer*>(reinterpret_cast<char*>(this + 1) +
+                                     size());
   }
 
   Footer* PrevFooter();
@@ -47,7 +48,8 @@ struct Header : public Common {
 
 struct Footer : public Common {
   Header* GetHeader() {
-    return reinterpret_cast<Header*>(reinterpret_cast<char*>(this) - size()) - 1;
+    return reinterpret_cast<Header*>(reinterpret_cast<char*>(this) - size()) -
+           1;
   }
 
   Header* NextHeader() {
@@ -61,7 +63,9 @@ Footer* Header::PrevFooter() {
   return reinterpret_cast<Footer*>(this) - 1;
 }
 
-Header* FreeNodeHeader(IntrusiveList::Node* node) { return reinterpret_cast<Header*>(node) - 1; }
+Header* FreeNodeHeader(IntrusiveList::Node* node) {
+  return reinterpret_cast<Header*>(node) - 1;
+}
 
 // Single free list with first fit allocation.
 // TODO(bcf): Use better scheme like free list per size.
@@ -70,8 +74,7 @@ IntrusiveList g_free_list;
 Header* AllocNode(size_t size) {
   static_assert(sizeof(Header) <= alignof(max_align_t));
   // We must add padding so the memory after the header is page aligned.
-  size_t pad =
-      std::max(sizeof(Header), alignof(max_align_t) - sizeof(Header));
+  size_t pad = std::max(sizeof(Header), alignof(max_align_t) - sizeof(Header));
   size_t min_alloc_size = pad + size + sizeof(Footer);
   size_t num_pages = DIV_ROUND_UP(min_alloc_size, PAGE_SIZE);
 
@@ -182,8 +185,8 @@ Header* TryCoalesceHeader(Header* header) {
   Header* prev_header = prev_footer->GetHeader();
   assert(!prev_header->used());
 
-  size_t new_size = header->size() + prev_header->size() +
-                    sizeof(Header) + sizeof(Footer);
+  size_t new_size =
+      header->size() + prev_header->size() + sizeof(Header) + sizeof(Footer);
   prev_header->set_size(new_size);
   footer->set_size(new_size);
 
@@ -204,8 +207,8 @@ Footer* TryCoalesceFooter(Footer* footer) {
   Footer* next_footer = next_header->GetFooter();
   assert(!next_footer->used());
 
-  size_t new_size = header->size() + next_header->size() +
-                    sizeof(Header) + sizeof(Footer);
+  size_t new_size =
+      header->size() + next_header->size() + sizeof(Header) + sizeof(Footer);
   header->set_size(new_size);
   next_footer->set_size(new_size);
 

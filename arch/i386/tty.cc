@@ -39,13 +39,9 @@ int g_tty_col = 0;
 u8 g_tty_color;
 u16* g_tty_buf = reinterpret_cast<u16*>(0xc03ff000);
 
-u8 VgaEntryColor(VgaColor fg, VgaColor bg) {
-  return fg | (bg << 4);
-}
+u8 VgaEntryColor(VgaColor fg, VgaColor bg) { return fg | (bg << 4); }
 
-u16 VgaEntry(u8 c, u8 color) {
-  return c | ((u16)color << 8);
-}
+u16 VgaEntry(u8 c, u8 color) { return c | ((static_cast<u16>(color) << 8)); }
 
 void SetColor(u8 color) { g_tty_color = color; }
 

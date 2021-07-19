@@ -13,5 +13,5 @@ for dir in ${BLACKLIST_DIRS[@]}; do
   cmd="$cmd -not \( -path ./$dir -prune \) "
 done
 
-cmd="$cmd -type f -name '*.h' -o -name '*.c'"
+cmd="$cmd -type f -name '*.h' -o -name '*.c' -o -name '*.cc'"
 eval $cmd

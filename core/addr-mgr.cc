@@ -255,4 +255,3 @@ void AddrMgr::EraseRegion(Region& region) {
   deleted = free_by_addr_.Erase(region.addr_node);
   assert(deleted == &region.addr_node);
 }
-
