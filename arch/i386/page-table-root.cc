@@ -71,7 +71,7 @@ PhysAddr PageTableRoot::LookupPa(VirtAddr va) {
   int pde_idx = va.val() / PageTable::kBytes;
   PagesRef& pt_page = page_table_pages_[pde_idx];
   if (!pt_page) {
-    return PhysAddr(0);
+    return kInvalidPa;
   }
 
   auto* page_table = reinterpret_cast<PageTable*>(pt_page->va.val());
@@ -79,7 +79,7 @@ PhysAddr PageTableRoot::LookupPa(VirtAddr va) {
 
   auto& pte = (*page_table)[pte_idx];
   if (!pte.present) {
-    return PhysAddr(0);
+    return kInvalidPa;
   }
 
   return PhysAddr(pte.addr * PAGE_SIZE);

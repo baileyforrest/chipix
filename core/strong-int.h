@@ -4,7 +4,7 @@ template <typename T>
 class StrongInt {
  public:
   StrongInt() = default;
-  explicit StrongInt(T val) : val_(val) {}
+  constexpr explicit StrongInt(T val) : val_(val) {}
 
   T val() const { return val_; }
 

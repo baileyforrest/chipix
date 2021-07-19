@@ -42,11 +42,11 @@ void Init(multiboot_info_t* mbd);
 PagesRef AllocPages(size_t count);
 void FreePages(Pages* pages);
 
-// Returns 0 on failure.
+// Returns kInvalidVa on failure.
 VirtAddr AllocPagesVa(size_t num_pages);
 void FreePagesVa(VirtAddr addr, size_t num_pages);
 
-// Returns 0 on failure.
+// Returns kInvalidPa on failure.
 PhysAddr AllocPagesPa(size_t num_pages);
 void FreePagesPa(PhysAddr addr, size_t num_pages);
 

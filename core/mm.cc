@@ -33,13 +33,13 @@ bool g_default_page_used = false;
 
 PhysAddr AllocAndMapPhysPages(const VirtAddr virt_begin, const size_t count) {
   const PhysAddr phys_begin = AllocPagesPa(count);
-  if (phys_begin == PhysAddr(0)) {
-    return PhysAddr(0);
+  if (phys_begin == kInvalidPa) {
+    return kInvalidPa;
   }
   auto clean_pa = MakeCleanup([&] { FreePagesPa(phys_begin, count); });
 
   if (arch::MapAddr(arch::cur_page_table, virt_begin, phys_begin, count) < 0) {
-    return PhysAddr(0);
+    return kInvalidPa;
   }
 
   std::move(clean_pa).Cancel();
@@ -107,13 +107,13 @@ PagesRef AllocPages(const size_t count) {
 
   ret->count = count;
   ret->va = AllocPagesVa(count);
-  if (ret->va == VirtAddr(0)) {
+  if (ret->va == kInvalidVa) {
     return {};
   }
   auto clean_va = MakeCleanup([&] { FreePagesVa(ret->va, count); });
 
   ret->pa = AllocAndMapPhysPages(ret->va, count);
-  if (ret->pa == PhysAddr(0)) {
+  if (ret->pa == kInvalidPa) {
     return {};
   }
 
@@ -160,7 +160,7 @@ void* __malloc_alloc_pages(const size_t count) {
   }
 
   const VirtAddr virt_begin = mm::AllocPagesVa(count);
-  if (virt_begin == VirtAddr(0)) {
+  if (virt_begin == kInvalidVa) {
     return nullptr;
   }
 
@@ -169,7 +169,7 @@ void* __malloc_alloc_pages(const size_t count) {
   for (; i < count; ++i) {
     VirtAddr va = virt_begin + i * PAGE_SIZE;
     PhysAddr pa = mm::AllocAndMapPhysPages(va, 1);
-    if (pa == PhysAddr(0)) {
+    if (pa == kInvalidPa) {
       goto error;
     }
   }
@@ -198,7 +198,7 @@ void __malloc_free_page(void* addr, size_t num_pages) {
   for (size_t i = 0; i < num_pages; ++i) {
     PhysAddr pa =
         arch::LookupPa(arch::cur_page_table, virt_begin + i * PAGE_SIZE);
-    assert(pa != PhysAddr(0));
+    assert(pa != kInvalidPa);
     mm::FreePagesPa(pa, 1);
   }
 

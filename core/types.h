@@ -16,3 +16,6 @@ using s64 = int64_t;
 
 using PhysAddr = StrongInt<uintptr_t>;
 using VirtAddr = StrongInt<uintptr_t>;
+
+inline constexpr auto kInvalidPa = PhysAddr(-1);
+inline constexpr auto kInvalidVa = VirtAddr(-1);
