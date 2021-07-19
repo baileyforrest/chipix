@@ -72,10 +72,11 @@ Header* FreeNodeHeader(IntrusiveList::Node* node) {
 IntrusiveList g_free_list;
 
 Header* AllocNode(size_t size) {
+  // We must add padding so the memory after the header is aligned.
   static_assert(sizeof(Header) <= alignof(max_align_t));
-  // We must add padding so the memory after the header is page aligned.
-  size_t pad = std::max(sizeof(Header), alignof(max_align_t) - sizeof(Header));
-  size_t min_alloc_size = pad + size + sizeof(Footer);
+  size_t pad = alignof(max_align_t) - sizeof(Header);
+
+  size_t min_alloc_size = pad + size + sizeof(Header) + sizeof(Footer);
   size_t num_pages = DIV_ROUND_UP(min_alloc_size, PAGE_SIZE);
 
   char* mem = reinterpret_cast<char*>(__malloc_alloc_pages(num_pages));
@@ -83,7 +84,7 @@ Header* AllocNode(size_t size) {
     return nullptr;
   }
   size_t real_size = num_pages * PAGE_SIZE;
-  size_t payload_size = real_size - pad - sizeof(Footer);
+  size_t payload_size = real_size - pad - sizeof(Header) - sizeof(Footer);
 
   auto* header = reinterpret_cast<Header*>(mem + pad);
   header->set_size(payload_size);
