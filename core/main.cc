@@ -2,6 +2,7 @@
 #include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include <new>
 
@@ -59,9 +60,27 @@ extern "C" void kernel_main(multiboot_info_t* mbd, unsigned int magic) {
   printf("global: %d\n", global.x);
 
   struct Big {
+    explicit Big(int val) { memset(data, val, sizeof(data)); }
     char data[4096];
   };
 
-  auto* big = new Big;
-  printf("big: %p\n", big);
+  Big* big1 = nullptr;
+  Big* big2 = nullptr;
+  Big* big3 = nullptr;
+
+  big1 = new Big(1);
+  big2 = new Big(2);
+  big3 = new Big(3);
+
+  printf("big1: %p, big2: %p, big3: %p\n", big1, big2, big3);
+  delete big1;
+  big1 = new Big(1);
+  printf("big1: %p, big2: %p, big3: %p\n", big1, big2, big3);
+
+  delete big1;
+  delete big3;
+  delete big2;
+
+  big1 = new Big(1);
+  printf("big1: %p, big2: %p, big3: %p\n", big1, big2, big3);
 }

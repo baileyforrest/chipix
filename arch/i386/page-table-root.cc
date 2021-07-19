@@ -26,12 +26,7 @@ int PageTableRoot::MapAddr(const VirtAddr va, const PhysAddr pa,
         entry.bits = 0;
       }
 
-      PageDirectoryEntry new_pde;
-      new_pde.addr = pt_page->pa.val() / PAGE_SIZE;
-      new_pde.writable = true;
-      new_pde.present = true;
-
-      directory_[pde_idx].bits = new_pde.bits;
+      SetPde(pde_idx, pt_page->pa);
     }
 
     PageTableEntry new_pte;
@@ -83,6 +78,15 @@ PhysAddr PageTableRoot::LookupPa(VirtAddr va) {
   }
 
   return PhysAddr(pte.addr * PAGE_SIZE);
+}
+
+void PageTableRoot::SetPde(int pde_idx, PhysAddr pa) {
+  PageDirectoryEntry new_pde;
+  new_pde.addr = pa.val() / PAGE_SIZE;
+  new_pde.writable = true;
+  new_pde.present = true;
+
+  directory_[pde_idx].bits = new_pde.bits;
 }
 
 }  // namespace arch

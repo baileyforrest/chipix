@@ -16,8 +16,12 @@ class PageTableRoot {
   void UnmapAddr(VirtAddr va, size_t num_pages);
   PhysAddr LookupPa(VirtAddr va);
 
+  void SetPde(int pde_idx, PhysAddr pa);
+
   PageDirectory& directory() { return directory_; }
   PhysAddr directory_pa() { return directory_page_->pa; }
+
+  PagesRef* page_table_pages() { return page_table_pages_; }
 
  private:
   PageDirectory& directory_;
